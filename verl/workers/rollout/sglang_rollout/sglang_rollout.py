@@ -86,6 +86,11 @@ import configparser
 from openai import AsyncOpenAI
 from enum import Enum
 import json
+from autograph.rag_server.base_retriever import RetrieverConfig
+from autograph.rag_server.reranker_api import Reranker
+from autograph.rag_server.llm_api import LLMGenerator
+import json_repair
+import networkx as nx
 # from autograph.rag_server.rag_server import *
 
 class AutoGraphStateEnum(Enum):
@@ -340,6 +345,7 @@ class SGLangRollout(BaseRollout):
                 raise ValueError(f"Cannot get pad_token_id from processing_class {self.processing_class}") from e
        
         ## Get AutoGraph Config and initialize LLMGenerator
+        # modify the parameter in projects/autograph-r1/verl/workers/config/rollout.py
         config_parser = configparser.ConfigParser()
         config_parser.read("verl/third_party/autograph_r1/config.ini")
         
@@ -349,21 +355,23 @@ class SGLangRollout(BaseRollout):
             # Model checking
             model_name = actor_module
             if "Qwen2.5-7B-Instruct" in model_name:
-                api_service_provider = self.config.get('api_domain')
+                api_service_provider = config_parser['vllm_emb']
                 print('using local initialized model for RAG')
                 self.use_local_actor_for_rag = True
-                self.emb_api = config_parser[api_service_provider].get('vllm_emb')
-                self.emb_api_key = self.emb_api.get('URL')
-                self.emb_api_url = self.emb_api.get('KEY')
+                self.emb_api_key = api_service_provider.get('KEY')
+                self.emb_api_url = api_service_provider.get('URL')
                 self.emb_client = AsyncOpenAI(
                     base_url=self.emb_api_url,
                     api_key=self.emb_api_key,
-                    timeout=3000
+                    timeout=30000
                 )
                 # self.llm_generator = LLMGenerator(self._engine, model_name, backend="verl")
                 self.rag_method = self.config.get("rag_method", "Not found")
                 print(f'Using local rag: {self.rag_method}')
-                
+                self.retriever_config = RetrieverConfig(self.rag_method)
+                self.reranker = Reranker(self.emb_client)
+                self.llm_generator = LLMGenerator(self._engine, model_name, backend="verl")
+
             else:
                 # API initialization
                 api_service_provider = self.config.get('api_domain')
@@ -374,7 +382,7 @@ class SGLangRollout(BaseRollout):
                 self.client = AsyncOpenAI(
                     base_url=api_url,
                     api_key=api_key,
-                    timeout=3000
+                    timeout=30000
                 )
 
     def _init_distributed_env(self, device_mesh_cpu, **kwargs):
@@ -1743,6 +1751,7 @@ class SGLangRollout(BaseRollout):
             "max_new_tokens": max_new_tokens,
             "temperature": sampling_params.get("temperature", 0.7),
             "frequency_penalty": sampling_params.get("frequency_penalty", 0.0),
+            "return_logprob": sampling_params.get("logprobs", False),
         }
         question = _req.interaction_kwargs.get("question", "")
         decomposed_queries = _req.interaction_kwargs.get("sub_queries", [])
@@ -1753,26 +1762,30 @@ class SGLangRollout(BaseRollout):
             if item.get("role") == "assistant":
                 triples_string = item.get("content")
                 break
-        response = await self.client.chat.completions.create(
-            model="vllm-tog-rag",  # Model name (matches your server's response)
-            messages=[
-                {
-                    "role": "user",
-                    "content": json.dumps({
-                        "question": question,
-                        "triples_string": triples_string,
-                        "sampling_params": api_sampling_params
-                    })  # Encode the KGQARequest as a JSON string
-                }
-            ],
-            extra_body={
-                "question": question,
-                "triples_string": triples_string,
-                "sampling_params": api_sampling_params,
-                "sub_queries": list(decomposed_queries)
-            }  # Pass the KGQARequest fields directly in extra_body
-        )
-        output_text = response.choices[0].message.content
+        has_error = False
+        try:
+            kg = parse_triples(triples_string)
+            if kg.number_of_edges() == 0:
+                output_text = "Error: No valid triples found"
+                has_error = True
+        except Exception as e:
+            output_text = "Error parsing triples"
+            has_error = True
+        
+        if not has_error:
+            if self.rag_method == "subgraph":
+                from autograph.rag_server.subgraph_retriever import SubgraphRetriever
+                retriever = SubgraphRetriever(self.retriever_config, self.llm_generator, self.reranker)
+            else:
+                raise NotImplementedError(f"RAG method {self.rag_method} not implemented")
+            answer = await retriever.retrieve(
+                question=question,
+                kg=kg,
+                sampling_params=api_sampling_params,
+                sub_queries=decomposed_queries
+            )
+            output_text = answer
+
         max_output_length = self.config.response_length
         if len(output_text) > max_output_length:
             # Truncate the output text to the maximum allowed length
@@ -1790,3 +1803,39 @@ class SGLangRollout(BaseRollout):
         }
 
         return output
+
+
+def parse_triples(triples_string: str) -> nx.DiGraph:
+    """Parses a string of triples into a directed graph (DiGraph).
+
+    Args:
+        triples_string (str): A JSON string containing a list of triples, where each triple is a dict
+                              with 'subject', 'relation', and 'object' keys.
+
+    Returns:
+        nx.DiGraph: A directed graph representing the triples.
+    """
+    try:
+        # Parse the JSON string into a Python object
+        triples_json = json_repair.loads(triples_string)
+
+        # Validate that the JSON is a list of dictionaries with the required keys
+        if not isinstance(triples_json, list):
+            raise ValueError("The triples_string must be a JSON array of triples.")
+        
+        for triple in triples_json:
+            if not isinstance(triple, dict) or not all(key in triple for key in ['subject', 'relation', 'object']) or any(str(triple[key]).strip() == "" for key in ['subject', 'relation', 'object']):
+                raise ValueError(f"Each triple must be a dictionary with 'subject', 'relation', and 'object' keys. Problematic triple: {triple}")
+
+        # Create a directed graph and add edges for each triple
+        graph = nx.DiGraph()
+        for triple in triples_json:
+            subject = str(triple['subject'])
+            relation = str(triple['relation'])
+            obj = str(triple['object'])
+            graph.add_edge(subject, obj, relation=relation)
+
+        return graph
+
+    except Exception as e:
+        raise ValueError(f"Failed to parse triples_string: {e}")

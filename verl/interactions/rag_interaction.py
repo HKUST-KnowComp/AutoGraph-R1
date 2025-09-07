@@ -62,7 +62,14 @@ class RAGInteraction(BaseInteraction):
         # plan > answer > no plan or answer
         reward = 0.0
         # Check if the assistant's response includes <plan>...</plan>
-        result_json = json_repair.loads(content)
+        try:
+            result_json = json_repair.loads(content)
+        except Exception as e:
+            logger.warning(f"Failed to parse assistant content as JSON: {e}\nContent: {content}")
+            should_terminate_sequence = True
+            response = "The response is not in the correct format."
+            reward = 0.0
+            return should_terminate_sequence, response, reward, {}
         # give format reward
         self._instance_dict[instance_id]["rag_state"] = False
         if isinstance(result_json, dict) and "answer" in result_json:

@@ -1,6 +1,6 @@
 from abc import ABC, abstractmethod
-from llm_api import LLMGenerator
-from reranker_api import Reranker
+from .llm_api import LLMGenerator
+from .reranker_api import Reranker
 # --- Retriever Configuration ---
 class RetrieverConfig:
     def __init__(

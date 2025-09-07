@@ -6,11 +6,11 @@ import numpy as np
 import networkx as nx
 from networkx import DiGraph
 from collections import defaultdict
-from llm_api import LLMGenerator
-from reranker_api import Reranker
-from base_retriever import RetrieverConfig, BaseRetriever
+from .llm_api import LLMGenerator
+from .reranker_api import Reranker
+from .base_retriever import RetrieverConfig, BaseRetriever
 import math
-from tog_prompt import REASONING_PROMPT, ANSWER_GENERATION_PROMPT, FEW_SHOT_EXAMPLE
+from .tog_prompt import REASONING_PROMPT, ANSWER_GENERATION_PROMPT, FEW_SHOT_EXAMPLE
 import jellyfish
 import logging 
 
@@ -35,9 +35,8 @@ class SubgraphRetriever(BaseRetriever):
                 "content": f"Extract all the named entities from: {text}"
             }
         ]
-        response = await self.llm_generator.generate_response(messages)
+        response = await self.llm_generator.generate_response(messages, **self.sampling_params)
         entities_json = json_repair.loads(response)
-        
         if "entities" not in entities_json or not isinstance(entities_json["entities"], list):
             return {}
         return entities_json
@@ -48,6 +47,7 @@ class SubgraphRetriever(BaseRetriever):
         
         # compute triples embeddings
         self.triple_embeddings = await self.reranker.embed([f"{src} {rel} {dst}" for src, dst, rel in kg.edges(data="relation")])
+        assert len(self.triple_embeddings) == len(kg.edges), f"len(triple_embeddings): {len(self.triple_embeddings)}, len(kg.edges): {len(kg.edges)}"
         def get_subquery_instruct(sub_query: str) -> str:
             task = "Given a question with its golden answer, retrieve the most relevant knowledge graph triple."
             return f"Instruct: {task}\nQuery: {sub_query}"
@@ -56,6 +56,8 @@ class SubgraphRetriever(BaseRetriever):
             sub_query_text = get_subquery_instruct(sub_query)
             sub_query_texts.append(sub_query_text)
         self.sub_queries_embeddings = await self.reranker.embed(sub_query_texts)
+        assert len(self.sub_queries_embeddings) == len(self.sub_queries), f"len(self.sub_queries_embeddings): {len(self.sub_queries_embeddings)}, len(self.sub_queries): {len(self.sub_queries)}"
+        
 
     async def retrieve_topk_nodes(self, query):
         """Retrieve top-k nodes relevant to the query, with fallback to similar nodes."""
@@ -158,8 +160,9 @@ class SubgraphRetriever(BaseRetriever):
         messages = [
             {"role": "system", "content": prompt},
         ]
+        self.sampling_params["temperature"] = self.config.temperature_reasoning
         messages.append({"role": "user", "content": f"{triples_string}\n\n{query}"})
-        generated_text = await self.llm_generator.generate_response(messages, temperature=self.config.temperature_reasoning)
+        generated_text = await self.llm_generator.generate_response(messages, **self.sampling_params)
         if "Answer:" in generated_text:
             generated_text = generated_text.split("Answer:")[-1]
         elif "answer:" in generated_text:
@@ -187,12 +190,13 @@ class SubgraphRetriever(BaseRetriever):
             return 0.0
 
         triples = [(u, data["relation"], v) for u, v, data in self.KG.edges(data=True)]
+        
         if not triples:
             return 0.0
 
         rewards = []
         sim_scores = self.sub_queries_embeddings @ self.triple_embeddings.T
-
+        assert sim_scores.shape == (len(self.sub_queries), len(triples)), f"sim_scores shape {sim_scores.shape} does not match expected {(triples, self.kg.edges(data="relation") )}"
         for sim_score, sub_query in zip(sim_scores, self.sub_queries):
             # Parse golden answer string (assumes format "... Answer: X")
             if "Answer:" not in sub_query:

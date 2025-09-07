@@ -169,4 +169,4 @@ class RolloutConfig(BaseConfig):
     # AutoGraph Config
     api_domain:str ='rag_server' 
     use_api:bool =True 
-    rag_method:str = 'simple'
+    rag_method:str = 'subgraph'

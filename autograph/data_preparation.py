@@ -266,19 +266,27 @@ async def process_musique_single_row(row, split_name, row_index, mcq_dict = None
                 index = int(match.group(1))
             else:
                 raise ValueError("Invalid question format")
-            sub_query_answer = sub_queries[int(index)-1]["answer"]
-            # replace #<index> with the actual answer
-            sub_question = sub_question.replace(f"#{index}", sub_query_answer)
-            atomic_sub_query_with_answer.append(f"{sub_question} Answer: {sub_query['answer']}")
+            if index > len(sub_queries):
+                atomic_sub_query_with_answer.append(f"{sub_query['question']} Answer: {sub_query['answer']}")
+            else:
+                sub_query_answer = sub_queries[int(index)-1]["answer"]
+                # replace #<index> with the actual answer
+                sub_question = sub_question.replace(f"#{index}", sub_query_answer)
+                atomic_sub_query_with_answer.append(f"{sub_question} Answer: {sub_query['answer']}")
         else:
             atomic_sub_query_with_answer.append(f"{sub_query['question']} Answer: {sub_query['answer']}")
     
+    supporting_context = []
+    for context in all_context:
+        if context.get("is_supporting"):
+            supporting_context.append(f"{context.get('title', '')}: {context.get('paragraph_text', '')}")
 
     interaction_kwargs = {
         "name": "graph_construction",
         "question": question,
         "ground_truth": answers,
-        "sub_queries": atomic_sub_query_with_answer
+        "sub_queries": atomic_sub_query_with_answer,
+        "supporting_context": supporting_context,
     }
     
     extra_info = {

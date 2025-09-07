@@ -8,8 +8,7 @@ import asyncio
 from transformers.pipelines import Pipeline
 import jsonschema
 from transformers import AutoTokenizer
-from vllm import AsyncLLMEngine
-from vllm import SamplingParams
+from sglang.srt.sampling.sampling_params import SamplingParams
 import torch
 
 import time
@@ -38,10 +37,11 @@ def serialize_openai_tool_call_message(message) -> dict:
 class LLMGenerator():
     def __init__(self, client, model_name, backend = 'verl'):
         self.model_name = model_name
-        self.client = client
+        self.client : OpenAI  = client
         if isinstance(client, (OpenAI,AzureOpenAI,AsyncOpenAI)):
             self.inference_type = "openai"
         if backend == 'verl':
+            self.inference_type = "verl"
             self.tokenizer = AutoTokenizer.from_pretrained(self.model_name)
         
     async def _api_inference(self, message, max_new_tokens=8192,
@@ -103,8 +103,8 @@ class LLMGenerator():
         else:
             return response
     @torch.no_grad()
-    async def _vllm_inference(self, message, max_new_tokens=8192,
-                              temperature=0.7,
+    async def _verl_inference(self, message, max_new_tokens=8192,
+                              temperature=0.0,
                               frequency_penalty=None,
                               return_text_only=True,
                               **kwargs):
@@ -115,17 +115,19 @@ class LLMGenerator():
                     serialize_message[i] = serialize_openai_tool_call_message(msg)
             elif hasattr(msg, 'tool_calls') and msg.tool_calls is not None:
                 serialize_message[i] = serialize_openai_tool_call_message(msg)
-        prompt = self.tokenizer.apply_chat_template(serialize_message, tokenize=False, add_generation_prompt=True)
-        sampling_params = SamplingParams(
-            temperature=temperature,
-            max_tokens=max_new_tokens,
-            frequency_penalty=frequency_penalty if frequency_penalty is not None else 0.0,
-        )
+        prompt_ids = self.tokenizer.apply_chat_template(serialize_message, tokenize=True, add_generation_prompt=True)
+        sampling_params = {
+            "temperature": temperature,
+            "max_new_tokens": max_new_tokens,
+            "frequency_penalty": frequency_penalty if frequency_penalty is not None else 0.0,
+        }
+        return_log_probs = kwargs.get("return_log_prob", False)
         request_id = str(time.time())
         results = []
-        async for request_output in self.client.generate(prompt, sampling_params, request_id):
-            results.append(request_output)
-        output_text = results[-1].outputs[0].text if results else ""
+
+        result = await self.client.async_generate(input_ids=prompt_ids, sampling_params=sampling_params, return_logprob=False)
+        results.append(result)
+        output_text = results[-1]['text'] if results else ""
         content = output_text
         if return_text_only:
             return content
@@ -155,10 +157,10 @@ class LLMGenerator():
                     return ""
             tasks = [process_message(i) for i in to_process]
             results = await asyncio.gather(*tasks)
-        elif self.inference_type == "vllm":
+        elif self.inference_type == "verl":
             async def process_message(i):
                 try:
-                    return await self._vllm_inference(
+                    return await self._verl_inference(
                         batch_messages[i], max_new_tokens, temperature,
                         frequency_penalty, return_text_only, **kwargs
                     )

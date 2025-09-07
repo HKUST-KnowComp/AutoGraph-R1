@@ -29,7 +29,12 @@ def extract_solution(solution_str: str) -> Union[str, None]:
         if not assistant_parts:
             return None
         last_assistant_response = assistant_parts[-1].strip()
-        solution_dict = json_repair.loads(last_assistant_response)
+        try:
+            solution_dict = json_repair.loads(last_assistant_response)
+        except Exception as e:
+            print(f"Error parsing JSON: {e}")
+            return None, 1, 0
+
         if isinstance(solution_dict, dict):
             return solution_dict.get("answer", None), solution_dict.get("edge_coverage", 1), solution_dict.get("semantic_reward", 0)
         elif isinstance(solution_dict, list):
