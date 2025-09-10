@@ -6,14 +6,18 @@ import numpy as np
 import networkx as nx
 from networkx import DiGraph
 from collections import defaultdict
-from .llm_api import LLMGenerator
-from .reranker_api import Reranker
-from .base_retriever import RetrieverConfig, BaseRetriever
+from autograph.rag_server.llm_api import LLMGenerator
+from autograph.rag_server.reranker_api import Reranker
+from autograph.rag_server.base_retriever import RetrieverConfig, BaseRetriever
 import math
-from .tog_prompt import REASONING_PROMPT, ANSWER_GENERATION_PROMPT, FEW_SHOT_EXAMPLE
+from autograph.rag_server.tog_prompt import REASONING_PROMPT, ANSWER_GENERATION_PROMPT, FEW_SHOT_EXAMPLE
 import jellyfish
 import logging 
 
+def batch(iterable, n=100):
+    l = len(iterable)
+    for ndx in range(0, l, n):
+        yield iterable[ndx:min(ndx + n, l)]
 class SubgraphRetriever(BaseRetriever):
     def __init__(self, config: RetrieverConfig, llm_generator: LLMGenerator, reranker: Reranker):
         self.config = config
@@ -40,13 +44,21 @@ class SubgraphRetriever(BaseRetriever):
         if "entities" not in entities_json or not isinstance(entities_json["entities"], list):
             return {}
         return entities_json
+    
+    async def index_kg(self, kg: DiGraph, batch_size:int = 100):
+        nodes = list(kg.nodes)
+        node_embeddings = []
+        for node_batch in batch(nodes, batch_size):
+            node_embeddings.extend(await self.reranker.embed(node_batch))
+        self.node_embeddings = np.array(node_embeddings)
 
-    async def index_kg(self, kg: DiGraph):
-        """Compute embeddings for nodes and relations in the KG."""
-        self.node_embeddings = await self.reranker.embed(list(kg.nodes))
+        # Batched triple embeddings
+        triples = [f"{src} {rel} {dst}" for src, dst, rel in kg.edges(data="relation")]
+        triple_embeddings = []
+        for triple_batch in batch(triples, batch_size):
+            triple_embeddings.extend(await self.reranker.embed(triple_batch))
+        self.triple_embeddings = np.array(triple_embeddings)
         
-        # compute triples embeddings
-        self.triple_embeddings = await self.reranker.embed([f"{src} {rel} {dst}" for src, dst, rel in kg.edges(data="relation")])
         assert len(self.triple_embeddings) == len(kg.edges), f"len(triple_embeddings): {len(self.triple_embeddings)}, len(kg.edges): {len(kg.edges)}"
         def get_subquery_instruct(sub_query: str) -> str:
             task = "Given a question with its golden answer, retrieve the most relevant knowledge graph triple."
@@ -68,6 +80,7 @@ class SubgraphRetriever(BaseRetriever):
         topk_nodes = []
         entities_not_in_kg = []
         entities = [str(e) for e in entities]
+        entities = list(set(entities))  # deduplicate
         for entity in entities:
             if entity in self.KG.nodes:
                 topk_nodes.append(entity)
@@ -82,6 +95,7 @@ class SubgraphRetriever(BaseRetriever):
                 for j in indices[i]:
                     top_node = kg_nodes[j]
                     topk_nodes.append(top_node)
+        topk_nodes = list(set(topk_nodes))
         return topk_nodes
 
     async def construct_subgraph(self, query, initial_nodes):

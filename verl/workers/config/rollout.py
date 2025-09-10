@@ -170,3 +170,4 @@ class RolloutConfig(BaseConfig):
     api_domain:str ='rag_server' 
     use_api:bool =True 
     rag_method:str = 'subgraph'
+    text_linking:bool= False

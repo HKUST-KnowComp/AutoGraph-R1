@@ -44,8 +44,8 @@ python3 -m verl.trainer.main_ppo \
     --config-path="$CONFIG_PATH" \
     --config-name='autograph_multiturn_grpo' \
     algorithm.adv_estimator=grpo \
-    data.train_batch_size=128 \
-    data.val_batch_size=128 \
+    data.train_batch_size=64 \
+    data.val_batch_size=64 \
     data.max_prompt_length=8192 \
     data.max_response_length=8192 \
     data.filter_overlong_prompts=True \

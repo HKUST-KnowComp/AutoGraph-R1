@@ -95,6 +95,7 @@ parser.add_argument("--minimum_difficulty", default="medium", choices=["easy", "
 parser.add_argument("--dataset", default="dgslibisey/MuSiQue" , choices=["hotpotqa/hotpot_qa", "dgslibisey/MuSiQue", "xanhho/2WikiMultihopQA"], help="Dataset to process.")
 parser.add_argument("--generate_mcq", action="store_true", help="Whether to generate multiple-choice questions (MCQs) from the dataset.")
 parser.add_argument("--mcq_path", default="/data/autograph/data/mcq", help="Path to save the generated MCQs.")
+parser.add_argument("--text_linking", action="store_true", help="Whether to use text linking in HippoRAG2")
 
 
 args = parser.parse_args()
@@ -238,13 +239,15 @@ async def process_musique_single_row(row, split_name, row_index, mcq_dict = None
         for key in document_key:
             hash_key = sha256(f"{key[0]}: {key[1]}".encode()).hexdigest()
             mcq_list.append(mcq_dict[hash_key])
-
-    context_str = "\n".join(document_list)
-    context_str = context_str.rstrip("\n")
+    if args.text_linking:
+        context_str = document_list[0]  # Use only the first document for text linking
+    else:
+        context_str = "\n".join(document_list)
+        context_str = context_str.rstrip("\n")
 
     prompt = [
         {"role": "system", "content": DEFAULT_SYSTEM_CONTENT},
-        {"role": "user", "content": context_str}
+        {"role": "user", "content": f"Extract JSON array of knowledge graph triples for:{context_str}" if args.text_linking else context_str}
     ]
     
     reward_model_data = {
@@ -287,6 +290,7 @@ async def process_musique_single_row(row, split_name, row_index, mcq_dict = None
         "ground_truth": answers,
         "sub_queries": atomic_sub_query_with_answer,
         "supporting_context": supporting_context,
+        "full_context": document_list
     }
     
     extra_info = {
@@ -443,7 +447,7 @@ async def main():
             processed = await process_single_row(row, split, idx)
             processed_rows.append(processed)
         df_processed = pd.DataFrame(processed_rows)
-        output_file_path = os.path.join(local_save_dir, f"{dataset_name}_{split}_doc_size_{args.doc_size}_distract_{args.include_distractor}_with_mcq_{args.generate_mcq}_difficulty_{args.minimum_difficulty}.parquet")
+        output_file_path = os.path.join(local_save_dir, f"{dataset_name}_{split}_doc_size_{args.doc_size}_distract_{args.include_distractor}_with_mcq_{args.generate_mcq}_difficulty_{args.minimum_difficulty}_text_linking_{args.text_linking}.parquet")
         if args.first_10_instances:
             output_file_path = os.path.join(local_save_dir, f"{dataset_name}_{split}_distract_{args.include_distractor}_first_10.parquet")
         df_processed.to_parquet(output_file_path, index=False)

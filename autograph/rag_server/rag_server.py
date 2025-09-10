@@ -14,10 +14,10 @@ from vllm import LLM
 import time
 from tog import TogRetriever
 from subgraph_retriever import SubgraphRetriever
-from .reranker_api import Reranker
-from .llm_api import LLMGenerator
+from autograph.rag_server.reranker_api import Reranker
+from autograph.rag_server.llm_api import LLMGenerator
 import json_repair
-from .base_retriever import RetrieverConfig, BaseRetriever, DummyRetriever
+from autograph.rag_server.base_retriever import RetrieverConfig, BaseRetriever, DummyRetriever
 from openai import AsyncOpenAI, OpenAI
 import configparser
 import asyncio
@@ -32,7 +32,7 @@ class KGQARequest(BaseModel):
     )
     sampling_params: dict = Field(default_factory=lambda: {"temperature": 0.0, "max_tokens": 512})
     sub_queries: List[str] = Field(default_factory=list, description="List of sub-queries with answers.")
-    
+
 
 def build_openai_response(answer: str, model: str) -> dict:
     """Builds an OpenAI-compatible chat completion response."""

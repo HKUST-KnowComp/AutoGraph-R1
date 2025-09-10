@@ -354,36 +354,50 @@ class SGLangRollout(BaseRollout):
         if self.use_api:
             # Model checking
             model_name = actor_module
-            if "Qwen2.5-7B-Instruct" in model_name:
-                api_service_provider = config_parser['vllm_emb']
-                print('using local initialized model for RAG')
-                self.use_local_actor_for_rag = True
-                self.emb_api_key = api_service_provider.get('KEY')
-                self.emb_api_url = api_service_provider.get('URL')
-                self.emb_client = AsyncOpenAI(
-                    base_url=self.emb_api_url,
-                    api_key=self.emb_api_key,
-                    timeout=30000
-                )
-                # self.llm_generator = LLMGenerator(self._engine, model_name, backend="verl")
-                self.rag_method = self.config.get("rag_method", "Not found")
-                print(f'Using local rag: {self.rag_method}')
-                self.retriever_config = RetrieverConfig(self.rag_method)
-                self.reranker = Reranker(self.emb_client)
-                self.llm_generator = LLMGenerator(self._engine, model_name, backend="verl")
+            api_service_provider = config_parser['vllm_emb']
+            print('using local initialized model for RAG')
+            self.use_local_actor_for_rag = True
+            self.emb_api_key = api_service_provider.get('KEY')
+            self.emb_api_url = api_service_provider.get('URL')
+            self.emb_client = AsyncOpenAI(
+                base_url=self.emb_api_url,
+                api_key=self.emb_api_key,
+                timeout=30000
+            )
+            # self.llm_generator = LLMGenerator(self._engine, model_name, backend="verl")
+            self.rag_method = self.config.get("rag_method", "Not found")
+            print(f'Using local rag: {self.rag_method}')
+            self.retriever_config = RetrieverConfig(self.rag_method)
+            self.reranker = Reranker(self.emb_client)
+            self.llm_generator = LLMGenerator(self._engine, model_name, backend="verl")
+            self.text_linking = self.config.get("text_linking", False)
 
-            else:
-                # API initialization
-                api_service_provider = self.config.get('api_domain')
-                print(f"Using API service provider {api_service_provider} for RAG")
-                api_url = config_parser[api_service_provider]['URL']
-                api_key = config_parser[api_service_provider]['KEY']
-                
-                self.client = AsyncOpenAI(
-                    base_url=api_url,
-                    api_key=api_key,
+            # using freeze api for answer generator
+            self.freeze_answer_api = self.config.get("freeze_answer_api", False)
+            if self.freeze_answer_api:
+                api_service_provider = config_parser['vllm']
+                self.answer_client = AsyncOpenAI(
+                    base_url=api_service_provider.get('URL'),
+                    api_key=api_service_provider.get('KEY'),
                     timeout=30000
                 )
+                self.llm_generator = LLMGenerator(self.answer_client, model_name, backend="openai")
+                print('Using freeze llm api for answer generation')
+            else:
+                self.answer_client = None
+
+            # else:
+            #     # API initialization
+            #     api_service_provider = self.config.get('api_domain')
+            #     print(f"Using API service provider {api_service_provider} for RAG")
+            #     api_url = config_parser[api_service_provider]['URL']
+            #     api_key = config_parser[api_service_provider]['KEY']
+                
+            #     self.client = AsyncOpenAI(
+            #         base_url=api_url,
+            #         api_key=api_key,
+            #         timeout=30000
+            #     )
 
     def _init_distributed_env(self, device_mesh_cpu, **kwargs):
         self._device_mesh_cpu = device_mesh_cpu
@@ -1054,14 +1068,76 @@ class SGLangRollout(BaseRollout):
                     )
 
                 interaction = self.interaction_map[interaction_name]
+                if self.text_linking and rag_state == AutoGraphStateEnum.CONSTRUCTING:
+                    # create the triples to link the title and text
+                    title_triple_dict = {}
+                    triples_list = []
+                    should_terminate_sequence = False
+                    for i in range(len(messages) - 1, -1, -1):
+                        item = messages[i]
+                        if item.get("role") == "assistant":
+                            content = item.get("content")
+                            break
+                    try:
+                        triples = json_repair.loads(content)
+                        assert isinstance(triples, list), "triples should be a list"
+                    except Exception:
+                        triples = []
+                        should_terminate_sequence = True
+                    triples_list.extend(triples)
+                    document_list = _req.interaction_kwargs.get("full_context", [])
+                    first_document = document_list[0]
+                    title_triple_dict[first_document] = triples
 
-                should_terminate_sequence, content, reward, metrics = await interaction.generate_response(
-                    _req.request_id, messages, 
-                    current_turn = user_turns, 
-                    max_user_turn = self.config.multi_turn.max_user_turns,
-                    **_req.interaction_kwargs
-                )
-                ## Perplex-rl add: interaction plan detected
+                    for document in document_list[1:]:
+                        # split document by first ":", the left part is title, the right part is text
+                        assert ":" in document, "document should contain ':' to separate title and text"
+                        title, text = document.split(":", 1)
+                        passage = f"Title: {title}\nText: {text}\n"
+                        instruction_content = f"Extract JSON array of knowledge graph triples for:\n{passage}"
+                        _req.add_user_message(self.processing_class, instruction_content)
+                        if len(_req.input_ids) >= self.config.max_model_len:
+                            finish_reason_type = FinishReasonTypeEnum.STOP
+                            break
+                        # simply copy the construction here again
+                        prompt_length = len(_req.get_generation_prompt_ids(self.processing_class))
+
+                        if prompt_length + 1 >= self.config.max_model_len:
+                            finish_reason_type = FinishReasonTypeEnum.LENGTH
+                            break
+                        output = await self._handle_engine_call(_req, request_sampling_params, image_data=image_data)
+                        content = output["text"]
+                        try:
+                            triples = json_repair.loads(content)
+                            assert isinstance(triples, list), "triples should be a list"
+                        except Exception:
+                            triples = []
+                            logger.warning(f"Failed to parse triples from content: {content}")
+                            break
+                        finish_reason_type = FinishReasonTypeEnum.from_str(output["meta_info"]["finish_reason"]["type"])
+                        if finish_reason_type == FinishReasonTypeEnum.LENGTH:
+                            _req.add_assistant_message(self.processing_class, content)
+                            break
+                        else:
+                            _req.add_assistant_message(self.processing_class, content)
+                            title_triple_dict[document] = triples
+                            triples_list.extend(triples)
+                    _req.interaction_kwargs["title_triple_dict"] = title_triple_dict
+                    _req.interaction_kwargs["triples_list"] = json.dumps(triples_list, ensure_ascii=False)
+                    should_terminate_sequence, content, reward, metrics = await interaction.generate_response(
+                        _req.request_id, messages, 
+                        current_turn = user_turns, 
+                        max_user_turn = self.config.multi_turn.max_user_turns,
+                        history = _req.messages,
+                        **_req.interaction_kwargs
+                    )
+                else:
+                    should_terminate_sequence, content, reward, metrics = await interaction.generate_response(
+                        _req.request_id, messages, 
+                        current_turn = user_turns, 
+                        max_user_turn = self.config.multi_turn.max_user_turns,
+                        **_req.interaction_kwargs
+                    )
                 is_rag = interaction._instance_dict[_req.request_id]["rag_state"]
                 user_turn_rewards.append(reward)
                 if should_terminate_sequence:
@@ -1677,62 +1753,64 @@ class SGLangRollout(BaseRollout):
     ) -> dict:
         if self.use_local_actor_for_rag:
             return await self._handle_local_rag_engine_call(_req, sampling_params, image_data, **kwargs)
-        generation_prompt_ids = _req.get_generation_prompt_ids(self.processing_class)
-        max_new_tokens = min(
-            self.config.response_length, 
-            self.config.max_model_len - len(generation_prompt_ids) - 1
-        )
-        api_sampling_params = {
-            "max_new_tokens": max_new_tokens,
-            "temperature": sampling_params.get("temperature", 0.7),
-            "frequency_penalty": sampling_params.get("frequency_penalty", 0.0),
-        }
-        question = _req.interaction_kwargs.get("question", "")
-        decomposed_queries = _req.interaction_kwargs.get("sub_queries", [])
-        messages = [{"role": x.role, "content": x.content} for x in _req.messages]
-        triples_string = ""
-        for i in range(len(messages) - 1, -1, -1):
-            item = messages[i]
-            if item.get("role") == "assistant":
-                triples_string = item.get("content")
-                break
-        response = await self.client.chat.completions.create(
-            model="vllm-tog-rag",  # Model name (matches your server's response)
-            messages=[
-                {
-                    "role": "user",
-                    "content": json.dumps({
-                        "question": question,
-                        "triples_string": triples_string,
-                        "sampling_params": api_sampling_params
-                    })  # Encode the KGQARequest as a JSON string
-                }
-            ],
-            extra_body={
-                "question": question,
-                "triples_string": triples_string,
-                "sampling_params": api_sampling_params,
-                "sub_queries": list(decomposed_queries)
-            }  # Pass the KGQARequest fields directly in extra_body
-        )
-        output_text = response.choices[0].message.content
-        max_output_length = self.config.response_length
-        if len(output_text) > max_output_length:
-            # Truncate the output text to the maximum allowed length
-            output_text = output_text[:max_output_length]
-            finish_reason = {"type": "length"}  # Indicate truncation
         else:
-            finish_reason = {"type": "stop"}  # Normal completion
+            raise NotImplementedError("Remote RAG engine call is not tested yet.")
+        # generation_prompt_ids = _req.get_generation_prompt_ids(self.processing_class)
+        # max_new_tokens = min(
+        #     self.config.response_length, 
+        #     self.config.max_model_len - len(generation_prompt_ids) - 1
+        # )
+        # api_sampling_params = {
+        #     "max_new_tokens": max_new_tokens,
+        #     "temperature": sampling_params.get("temperature", 0.7),
+        #     "frequency_penalty": sampling_params.get("frequency_penalty", 0.0),
+        # }
+        # question = _req.interaction_kwargs.get("question", "")
+        # decomposed_queries = _req.interaction_kwargs.get("sub_queries", [])
+        # messages = [{"role": x.role, "content": x.content} for x in _req.messages]
+        # triples_string = ""
+        # for i in range(len(messages) - 1, -1, -1):
+        #     item = messages[i]
+        #     if item.get("role") == "assistant":
+        #         triples_string = item.get("content")
+        #         break
+        # response = await self.client.chat.completions.create(
+        #     model="vllm-tog-rag",  # Model name (matches your server's response)
+        #     messages=[
+        #         {
+        #             "role": "user",
+        #             "content": json.dumps({
+        #                 "question": question,
+        #                 "triples_string": triples_string,
+        #                 "sampling_params": api_sampling_params
+        #             })  # Encode the KGQARequest as a JSON string
+        #         }
+        #     ],
+        #     extra_body={
+        #         "question": question,
+        #         "triples_string": triples_string,
+        #         "sampling_params": api_sampling_params,
+        #         "sub_queries": list(decomposed_queries)
+        #     }  # Pass the KGQARequest fields directly in extra_body
+        # )
+        # output_text = response.choices[0].message.content
+        # max_output_length = self.config.response_length
+        # if len(output_text) > max_output_length:
+        #     # Truncate the output text to the maximum allowed length
+        #     output_text = output_text[:max_output_length]
+        #     finish_reason = {"type": "length"}  # Indicate truncation
+        # else:
+        #     finish_reason = {"type": "stop"}  # Normal completion
 
-        output = {
-            "text": output_text,
-            "meta_info": {
-                "finish_reason": finish_reason,
-                "id": _req.request_id,
-            }
-        }
+        # output = {
+        #     "text": output_text,
+        #     "meta_info": {
+        #         "finish_reason": finish_reason,
+        #         "id": _req.request_id,
+        #     }
+        # }
 
-        return output
+        # return output
 
     async def _handle_local_rag_engine_call(
         self,
@@ -1757,34 +1835,59 @@ class SGLangRollout(BaseRollout):
         decomposed_queries = _req.interaction_kwargs.get("sub_queries", [])
         messages = [{"role": x.role, "content": x.content} for x in _req.messages]
         triples_string = ""
-        for i in range(len(messages) - 1, -1, -1):
-            item = messages[i]
-            if item.get("role") == "assistant":
-                triples_string = item.get("content")
-                break
-        has_error = False
-        try:
-            kg = parse_triples(triples_string)
-            if kg.number_of_edges() == 0:
-                output_text = "Error: No valid triples found"
-                has_error = True
-        except Exception as e:
-            output_text = "Error parsing triples"
-            has_error = True
+        if self.text_linking:
+            triples_string = _req.interaction_kwargs["triples_list"]
+        else:
+            for i in range(len(messages) - 1, -1, -1):
+                item = messages[i]
+                if item.get("role") == "assistant":
+                    triples_string = item.get("content")
+                    break
         
-        if not has_error:
-            if self.rag_method == "subgraph":
+        if self.rag_method == "subgraph":
+            has_error = False
+            try:
+                kg = parse_triples(triples_string)
+                if kg.number_of_edges() == 0:
+                    output_text = "Error: No valid triples found"
+                    has_error = True
+            except Exception as e:
+                output_text = "Error parsing triples"
+                has_error = True
+            
+            if not has_error:
                 from autograph.rag_server.subgraph_retriever import SubgraphRetriever
                 retriever = SubgraphRetriever(self.retriever_config, self.llm_generator, self.reranker)
-            else:
-                raise NotImplementedError(f"RAG method {self.rag_method} not implemented")
+                answer = await retriever.retrieve(
+                    question=question,
+                    kg=kg,
+                    sampling_params=api_sampling_params,
+                    sub_queries=decomposed_queries
+                )
+        elif self.text_linking and self.rag_method == "hipporag":
+            has_error = False
+            title_triple_dict = _req.interaction_kwargs["title_triple_dict"]
+            try:
+                kg = parse_triples_with_texts(title_triple_dict)
+                if kg.number_of_edges() == 0:
+                    output_text = "Error: No valid triples found"
+                    has_error = True
+            except Exception as e:
+                output_text = "Error parsing triples"
+                has_error = True
+            from autograph.rag_server.hipporag2 import HippoRAG2Retriever
+            retriever = HippoRAG2Retriever(self.retriever_config, self.llm_generator, self.reranker)
+            supporting_context = _req.interaction_kwargs.get("supporting_context")
+            full_context = _req.interaction_kwargs.get("full_context")
+
             answer = await retriever.retrieve(
                 question=question,
                 kg=kg,
                 sampling_params=api_sampling_params,
-                sub_queries=decomposed_queries
+                supporting_context=supporting_context,
+                full_context=full_context
             )
-            output_text = answer
+        output_text = answer
 
         max_output_length = self.config.response_length
         if len(output_text) > max_output_length:
@@ -1835,6 +1938,45 @@ def parse_triples(triples_string: str) -> nx.DiGraph:
             obj = str(triple['object'])
             graph.add_edge(subject, obj, relation=relation)
 
+        return graph
+
+    except Exception as e:
+        raise ValueError(f"Failed to parse triples_string: {e}")
+
+def parse_triples_with_texts(title_triple_dict: str, ) -> nx.DiGraph:
+    """Parses a string of triples into a directed graph (DiGraph).
+
+    Args:
+        triples_string (str): A JSON string containing a list of triples, where each triple is a dict
+                              with 'subject', 'relation', and 'object' keys.
+
+    Returns:
+        nx.DiGraph: A directed graph representing the triples.
+    """
+    graph = nx.DiGraph()
+    try:
+        # Parse the JSON string into a Python object
+        for passage, triples_string in title_triple_dict.items():
+            triples_json = json_repair.loads(triples_string)
+            
+            # Validate that the JSON is a list of dictionaries with the required keys
+            if not isinstance(triples_json, list):
+                raise ValueError("The triples_string must be a JSON array of triples.")
+            
+            for triple in triples_json:
+                if not isinstance(triple, dict) or not all(key in triple for key in ['subject', 'relation', 'object']) or any(str(triple[key]).strip() == "" for key in ['subject', 'relation', 'object']):
+                    raise ValueError(f"Each triple must be a dictionary with 'subject', 'relation', and 'object' keys. Problematic triple: {triple}")
+
+        # Create a directed graph and add edges for each triple
+            graph.add_node(passage, passage=True, node_type='passage')
+            for triple in triples_json:
+                subject = str(triple['subject'])
+                relation = str(triple['relation'])
+                obj = str(triple['object'])
+                graph.add_edge(subject, obj, relation=relation, node_type='entity')
+                # add passage node and connect to subject and object
+                graph.add_edge(subject, passage, relation='source')
+                graph.add_edge(obj, passage, relation='source')
         return graph
 
     except Exception as e:

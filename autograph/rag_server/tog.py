@@ -1,11 +1,11 @@
 from llm_api import LLMGenerator
-from .reranker_api import Reranker
+from autograph.rag_server.reranker_api import Reranker
 import numpy as np
-from .base_retriever import RetrieverConfig, BaseRetriever
+from autograph.rag_server.base_retriever import RetrieverConfig, BaseRetriever
 import json_repair
 import networkx as nx
 from networkx import DiGraph
-from .tog_prompt import *
+from autograph.rag_server.tog_prompt import *
 from collections import defaultdict
 import json
 class TogRetriever(BaseRetriever):

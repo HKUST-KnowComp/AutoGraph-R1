@@ -1,6 +1,6 @@
 from abc import ABC, abstractmethod
-from .llm_api import LLMGenerator
-from .reranker_api import Reranker
+from autograph.rag_server.llm_api import LLMGenerator
+from autograph.rag_server.reranker_api import Reranker
 # --- Retriever Configuration ---
 class RetrieverConfig:
     def __init__(
@@ -16,7 +16,10 @@ class RetrieverConfig:
         num_sents_for_reasoning: int = 9,
         topic_prune: bool = True,
         use_full_kg:bool = False,
-        num_hop:int = 4
+        num_hop:int = 4,
+        topN_edges: int = 10,
+        weight_adjust: float = 0.05,
+        topN_passages: int = 5,
     ):
         self.name = name
         self.max_length = max_length
@@ -30,6 +33,11 @@ class RetrieverConfig:
         self.topic_prune = topic_prune
         self.use_full_kg = use_full_kg
         self.num_hop = num_hop # number of hops to consider for subgraph retrieval
+
+        # HippoRAG specific parameters
+        self.topN_edges = topN_edges
+        self.weight_adjust = weight_adjust
+        self.topN_passages = topN_passages
 
 # --- Base Retriever ---
 class BaseRetriever(ABC):
