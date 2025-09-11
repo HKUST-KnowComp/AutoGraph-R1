@@ -31,14 +31,25 @@ ulimit -n 65535
 PROJECT_DIR="$(pwd)"
 CONFIG_PATH="$PROJECT_DIR/config"
 
+# AutoGraph parameters
+DIFFFICULTY="medium" # available: easy, medium
+DOC_SIZE=15 # available: 8,12,15
+WITH_DISTRACT="True" # Only True is supported now
+TEXT_LINKING="False" # available: True, False
 
-TRAIN_DATA="/data/autograph/data/musique_train_doc_size_10_distract_True_with_mcq_False_difficulty_medium.parquet"
-VAL_DATA="/data/autograph/data/musique_validation_doc_size_10_distract_True_with_mcq_False_difficulty_medium.parquet"
+ /data/autograph/data/musique_validation_doc_size_15_distract_False_with_mcq_False_difficulty_medium_text_linking_False.parquet
+TRAIN_DATA="/data/autograph/data/musique_train_doc_size_${DOC_SIZE}_distract_${WITH_DISTRACT}_with_mcq_False_difficulty_${DIFFFICULTY}_text_linking_${TEXT_LINKING}.parquet"
+VAL_DATA="/data/autograph/data/musique_validation_doc_size_${DOC_SIZE}_distract_${WITH_DISTRACT}_with_mcq_False_difficulty_${DIFFFICULTY}_text_linking_${TEXT_LINKING}.parquet"
 
 TIMESTAMP=$(date +"%Y%m%d_%H%M%S")
-CHECKPOINT_DIR="/data/autograph/checkpoints/${TIMESTAMP}_qwen2.5-7b-autograph-distract"
 
-reward_fn_file_path="verl/third_party/autograph_r1/reward.py"
+CHECKPOINT_DIR="/data/autograph/checkpoints/${TIMESTAMP}_qwen2.5-7b-autograph-distract_${DIFFFICULTY}-docsize${DOC_SIZE}-textlinking${TEXT_LINKING}"
+
+if [ "$TEXT_LINKING" = "True" ]; then
+    reward_fn_file_path="verl/third_party/autograph_r1/precision_reward.py"
+else
+    reward_fn_file_path="verl/third_party/autograph_r1/reward.py"
+fi
 
 python3 -m verl.trainer.main_ppo \
     --config-path="$CONFIG_PATH" \
@@ -80,13 +91,15 @@ python3 -m verl.trainer.main_ppo \
     trainer.val_before_train=False \
     trainer.logger=['console','wandb'] \
     trainer.project_name='auto_graph_rl' \
-    trainer.experiment_name='azure-qwen2.5-3b-auto-graph-rl-distract-medium-docsize10' \
+    trainer.experiment_name="azure-qwen2.5-3b-auto-graph-rl-distract-${DIFFFICULTY}-docsize${DOC_SIZE}-text-linking${TEXT_LINKING}" \
     trainer.n_gpus_per_node=2 \
     trainer.nnodes=1 \
-    trainer.save_freq=20 \
-    trainer.test_freq=20 \
+    trainer.total_training_steps=50 \
+    trainer.save_freq=50 \
+    trainer.test_freq=-1 \
+    trainer.ray_wait_register_center_timeout=3600 \
     data.train_files="$TRAIN_DATA" \
     data.val_files="$VAL_DATA"  \
     trainer.default_local_dir="$CHECKPOINT_DIR" \
-    trainer.total_training_steps=20 \
-    custom_reward_function.path="$reward_fn_file_path"
+    custom_reward_function.path="$reward_fn_file_path" \
+    

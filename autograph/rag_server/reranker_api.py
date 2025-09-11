@@ -7,7 +7,7 @@ class Reranker:
         self.emb_client = emb_client
         self.model_name = model_name
 
-    async def embed(self, input_texts: list, max_retries: int = 3) -> torch.Tensor:
+    async def embed(self, input_texts: list, max_retries: int = 10) -> torch.Tensor:
         for attempt in range(max_retries):
             try:
                 results = await self.emb_client.embeddings.create(input=input_texts, model=self.model_name)
@@ -15,7 +15,7 @@ class Reranker:
                 return embeddings
             except (APIConnectionError, Timeout, asyncio.TimeoutError) as e:
                 if attempt < max_retries - 1:
-                    await asyncio.sleep(min(2 ** attempt, 10))  # Exponential backoff
+                    await asyncio.sleep(min(2 ** attempt, 100))  # Exponential backoff
                 else:
                     return torch.zeros((len(input_texts), 1024))  # Assuming embedding size is 1024
 

@@ -10,9 +10,6 @@ from autograph.rag_server.llm_api import LLMGenerator
 from autograph.rag_server.reranker_api import Reranker
 from autograph.rag_server.base_retriever import RetrieverConfig, BaseRetriever
 from autograph.rag_server.tog_prompt import ANSWER_GENERATION_PROMPT
-import math
-import jellyfish
-import logging
 from tqdm import tqdm
 from typing import Dict, List, Tuple, Optional
 
@@ -32,13 +29,9 @@ from typing import Dict, List, Tuple
 import networkx as nx
 import numpy as np
 import json_repair
-from atlas_rag.vectorstore.embedding_model import BaseEmbeddingModel
-from atlas_rag.llm_generator.llm_generator import LLMGenerator
 from logging import Logger
 from dataclasses import dataclass
 from typing import Optional
-from atlas_rag.retriever.base import BasePassageRetriever
-from atlas_rag.retriever.inference_config import InferenceConfig
 
 # import hashlib
 import hashlib
@@ -58,7 +51,7 @@ def batch(iterable, n=100):
     for ndx in range(0, l, n):
         yield iterable[ndx:min(ndx + n, l)]
 
-class HippoRAG2Retriever(BasePassageRetriever):
+class HippoRAG2Retriever(BaseRetriever):
     def __init__(self, config: RetrieverConfig, llm_generator: LLMGenerator, reranker: Reranker):
         self.config = config
         self.llm_generator = llm_generator

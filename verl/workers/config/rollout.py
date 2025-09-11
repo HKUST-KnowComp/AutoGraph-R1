@@ -171,3 +171,4 @@ class RolloutConfig(BaseConfig):
     use_api:bool =True 
     rag_method:str = 'subgraph'
     text_linking:bool= False
+    freeze_answer_api:bool = True

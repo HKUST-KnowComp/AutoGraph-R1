@@ -381,6 +381,7 @@ class SGLangRollout(BaseRollout):
                     api_key=api_service_provider.get('KEY'),
                     timeout=30000
                 )
+                model_name = api_service_provider.get('MODEL_NAME')
                 self.llm_generator = LLMGenerator(self.answer_client, model_name, backend="openai")
                 print('Using freeze llm api for answer generation')
             else:
@@ -1864,6 +1865,7 @@ class SGLangRollout(BaseRollout):
                     sampling_params=api_sampling_params,
                     sub_queries=decomposed_queries
                 )
+                output_text = answer
         elif self.text_linking and self.rag_method == "hipporag":
             has_error = False
             title_triple_dict = _req.interaction_kwargs["title_triple_dict"]
@@ -1875,19 +1877,19 @@ class SGLangRollout(BaseRollout):
             except Exception as e:
                 output_text = "Error parsing triples"
                 has_error = True
-            from autograph.rag_server.hipporag2 import HippoRAG2Retriever
-            retriever = HippoRAG2Retriever(self.retriever_config, self.llm_generator, self.reranker)
-            supporting_context = _req.interaction_kwargs.get("supporting_context")
-            full_context = _req.interaction_kwargs.get("full_context")
-
-            answer = await retriever.retrieve(
-                question=question,
-                kg=kg,
-                sampling_params=api_sampling_params,
-                supporting_context=supporting_context,
-                full_context=full_context
-            )
-        output_text = answer
+            if not has_error:
+                from autograph.rag_server.hipporag2 import HippoRAG2Retriever
+                retriever = HippoRAG2Retriever(self.retriever_config, self.llm_generator, self.reranker)
+                supporting_context = _req.interaction_kwargs.get("supporting_context")
+                full_context = _req.interaction_kwargs.get("full_context")
+                answer = await retriever.retrieve(
+                    question=question,
+                    kg=kg,
+                    sampling_params=api_sampling_params,
+                    supporting_context=supporting_context,
+                    full_context=full_context
+                )
+                output_text = answer
 
         max_output_length = self.config.response_length
         if len(output_text) > max_output_length:
@@ -1943,7 +1945,7 @@ def parse_triples(triples_string: str) -> nx.DiGraph:
     except Exception as e:
         raise ValueError(f"Failed to parse triples_string: {e}")
 
-def parse_triples_with_texts(title_triple_dict: str, ) -> nx.DiGraph:
+def parse_triples_with_texts(title_triple_dict:dict ) -> nx.DiGraph:
     """Parses a string of triples into a directed graph (DiGraph).
 
     Args:
@@ -1954,30 +1956,37 @@ def parse_triples_with_texts(title_triple_dict: str, ) -> nx.DiGraph:
         nx.DiGraph: A directed graph representing the triples.
     """
     graph = nx.DiGraph()
-    try:
-        # Parse the JSON string into a Python object
-        for passage, triples_string in title_triple_dict.items():
-            triples_json = json_repair.loads(triples_string)
-            
-            # Validate that the JSON is a list of dictionaries with the required keys
-            if not isinstance(triples_json, list):
-                raise ValueError("The triples_string must be a JSON array of triples.")
-            
-            for triple in triples_json:
-                if not isinstance(triple, dict) or not all(key in triple for key in ['subject', 'relation', 'object']) or any(str(triple[key]).strip() == "" for key in ['subject', 'relation', 'object']):
-                    raise ValueError(f"Each triple must be a dictionary with 'subject', 'relation', and 'object' keys. Problematic triple: {triple}")
-
+    print(f"Parsing triples with texts: {type(title_triple_dict)}")
+    # Parse the JSON string into a Python object
+    corrected_triples_dict = {}
+    for passage, triples_string in title_triple_dict.items():
+        print(f"Type of passage: {type(passage)}")
+        print(f"Type of triples_string: {type(triples_string)}")
+    
+    for passage, triples_string in title_triple_dict.items():
+        print(triples_json)
+        # Validate that the JSON is a list of dictionaries with the required keys
+        if not isinstance(triples_json, list):
+            raise ValueError("The triples_string must be a JSON array of triples.")
+        
+        
+        for triple in triples_json:
+            if not isinstance(triple, dict) or not all(key in triple for key in ['subject', 'relation', 'object']) or any(str(triple[key]).strip() == "" for key in ['subject', 'relation', 'object']):
+                continue
+            else:
+                corrected_triples_dict.setdefault(passage, []).append(triple)
         # Create a directed graph and add edges for each triple
-            graph.add_node(passage, passage=True, node_type='passage')
-            for triple in triples_json:
-                subject = str(triple['subject'])
-                relation = str(triple['relation'])
-                obj = str(triple['object'])
-                graph.add_edge(subject, obj, relation=relation, node_type='entity')
-                # add passage node and connect to subject and object
-                graph.add_edge(subject, passage, relation='source')
-                graph.add_edge(obj, passage, relation='source')
-        return graph
-
-    except Exception as e:
-        raise ValueError(f"Failed to parse triples_string: {e}")
+        graph.add_node(passage, passage=True, node_type='passage')
+    print(f"Corrected triples dict: {corrected_triples_dict}")
+    for passage, triples in corrected_triples_dict.items():
+        graph.add_node(passage, passage=True, node_type='passage')
+        for triple in triples:
+            subject = str(triple['subject'])
+            relation = str(triple['relation'])
+            obj = str(triple['object'])
+            graph.add_edge(subject, obj, relation=relation, node_type='entity')
+            # add passage node and connect to subject and object
+            graph.add_edge(subject, passage, relation='source')
+            graph.add_edge(obj, passage, relation='source')
+    print(f"Graph has {graph.number_of_nodes()} nodes and {graph.number_of_edges()} edges.")
+    return graph
