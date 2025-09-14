@@ -62,6 +62,8 @@ class RAGInteraction(BaseInteraction):
         # plan > answer > no plan or answer
         reward = 0.0
         # Check if the assistant's response includes <plan>...</plan>
+        # give format reward
+        self._instance_dict[instance_id]["rag_state"] = False
         try:
             result_json = json_repair.loads(content)
         except Exception as e:
@@ -70,8 +72,6 @@ class RAGInteraction(BaseInteraction):
             response = "The response is not in the correct format."
             reward = 0.0
             return should_terminate_sequence, response, reward, {}
-        # give format reward
-        self._instance_dict[instance_id]["rag_state"] = False
         if isinstance(result_json, dict) and "answer" in result_json:
             answer = result_json.get("answer", "")
             should_terminate_sequence = True
@@ -80,7 +80,7 @@ class RAGInteraction(BaseInteraction):
         elif isinstance(result_json, list) and len(result_json) > 0:
             triples_keys = ["subject", "relation", "object"]
             # check if all key are present in all items
-            if all(all(key in item for key in triples_keys) for item in result_json):
+            if all(isinstance(item, dict) and all(key in item for key in triples_keys) for item in result_json):
                 should_terminate_sequence = False
                 response = "You will perform graph based RAG based on your constructed knowledge graph."
                 reward = 1.0

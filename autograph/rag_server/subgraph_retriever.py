@@ -156,12 +156,12 @@ class SubgraphRetriever(BaseRetriever):
         total_edges = len(self.KG.edges)
         subgraph_edges = len(subgraph.edges)
         edge_coverage = (subgraph_edges / total_edges) if total_edges > 0 else 0.0
-        semantic_reward = await self.compute_semantic_reward()
+        # semantic_reward = await self.compute_semantic_reward()
         # Return answer and coverage metrics
         return json.dumps({
             "answer": answer,
             "edge_coverage": edge_coverage,
-            "semantic_reward": semantic_reward
+            "semantic_reward": 0.0
         })
 
     async def generate_answer(self, query, subgraph: DiGraph):

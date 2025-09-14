@@ -1085,60 +1085,57 @@ class SGLangRollout(BaseRollout):
                     except Exception:
                         triples = []
                         should_terminate_sequence = True
-                    triples_list.extend(triples)
-                    document_list = _req.interaction_kwargs.get("full_context", [])
-                    first_document = document_list[0]
-                    title_triple_dict[first_document] = triples
+                    if not should_terminate_sequence:
+                        triples_list.extend(triples)
+                        document_list = _req.interaction_kwargs.get("full_context", [])
 
-                    for document in document_list[1:]:
-                        # split document by first ":", the left part is title, the right part is text
-                        assert ":" in document, "document should contain ':' to separate title and text"
-                        title, text = document.split(":", 1)
-                        passage = f"Title: {title}\nText: {text}\n"
-                        instruction_content = f"Extract JSON array of knowledge graph triples for:\n{passage}"
-                        _req.add_user_message(self.processing_class, instruction_content)
-                        if len(_req.input_ids) >= self.config.max_model_len:
-                            finish_reason_type = FinishReasonTypeEnum.STOP
-                            break
-                        # simply copy the construction here again
-                        prompt_length = len(_req.get_generation_prompt_ids(self.processing_class))
+                        model_tokenizer = self.processing_class  # tokenizer with .tokenize()
 
-                        if prompt_length + 1 >= self.config.max_model_len:
-                            finish_reason_type = FinishReasonTypeEnum.LENGTH
-                            break
-                        output = await self._handle_engine_call(_req, request_sampling_params, image_data=image_data)
-                        content = output["text"]
-                        try:
-                            triples = json_repair.loads(content)
-                            assert isinstance(triples, list), "triples should be a list"
-                        except Exception:
-                            triples = []
-                            logger.warning(f"Failed to parse triples from content: {content}")
-                            break
-                        finish_reason_type = FinishReasonTypeEnum.from_str(output["meta_info"]["finish_reason"]["type"])
-                        if finish_reason_type == FinishReasonTypeEnum.LENGTH:
-                            _req.add_assistant_message(self.processing_class, content)
-                            break
-                        else:
-                            _req.add_assistant_message(self.processing_class, content)
-                            title_triple_dict[document] = triples
-                            triples_list.extend(triples)
-                    _req.interaction_kwargs["title_triple_dict"] = title_triple_dict
-                    _req.interaction_kwargs["triples_list"] = json.dumps(triples_list, ensure_ascii=False)
-                    should_terminate_sequence, content, reward, metrics = await interaction.generate_response(
-                        _req.request_id, messages, 
-                        current_turn = user_turns, 
-                        max_user_turn = self.config.multi_turn.max_user_turns,
-                        history = _req.messages,
-                        **_req.interaction_kwargs
-                    )
-                else:
-                    should_terminate_sequence, content, reward, metrics = await interaction.generate_response(
-                        _req.request_id, messages, 
-                        current_turn = user_turns, 
-                        max_user_turn = self.config.multi_turn.max_user_turns,
-                        **_req.interaction_kwargs
-                    )
+                        # --- New Part: Link triples to documents by token overlap ---
+                        triple_to_doc = {}
+
+                        # preprocess documents into token counters
+                        doc_tokens = [set(model_tokenizer.tokenize(doc.lower())) for doc in document_list]
+
+                        for t_idx, triple in enumerate(triples_list):
+                            if not isinstance(triple, dict):
+                                continue
+                            if not triple.get("subject") or not triple.get("relation") or not triple.get("object"):
+                                continue
+                            subj = str(triple.get("subject", ""))
+                            rel = str(triple.get("relation", ""))
+                            obj = str(triple.get("object", ""))
+
+                            # flatten subject + relation + object
+                            triple_text = " ".join([subj, rel, obj]).strip()
+                            triple_tokens = set(model_tokenizer.tokenize(triple_text.lower()))
+                            if not triple_tokens:
+                                continue
+
+                            best_doc, best_score = None, -1
+                            for d_idx, d_tokens in enumerate(doc_tokens):
+                                overlap = len(triple_tokens & d_tokens)
+                                score = overlap / len(triple_tokens)
+                                if score > best_score:
+                                    best_score = score
+                                    best_doc = d_idx
+
+                            triple_to_doc[t_idx] = {
+                                "triple": triple,
+                                "doc_id": best_doc,
+                                "score": best_score,
+                            }
+
+                        # save results back into kwargs
+                        _req.interaction_kwargs["title_triple_dict"] = triple_to_doc
+                        _req.interaction_kwargs["triples_list"] = triples_list
+
+                should_terminate_sequence, content, reward, metrics = await interaction.generate_response(
+                    _req.request_id, messages, 
+                    current_turn = user_turns, 
+                    max_user_turn = self.config.multi_turn.max_user_turns,
+                    **_req.interaction_kwargs
+                )
                 is_rag = interaction._instance_dict[_req.request_id]["rag_state"]
                 user_turn_rewards.append(reward)
                 if should_terminate_sequence:
@@ -1836,14 +1833,11 @@ class SGLangRollout(BaseRollout):
         decomposed_queries = _req.interaction_kwargs.get("sub_queries", [])
         messages = [{"role": x.role, "content": x.content} for x in _req.messages]
         triples_string = ""
-        if self.text_linking:
-            triples_string = _req.interaction_kwargs["triples_list"]
-        else:
-            for i in range(len(messages) - 1, -1, -1):
-                item = messages[i]
-                if item.get("role") == "assistant":
-                    triples_string = item.get("content")
-                    break
+        for i in range(len(messages) - 1, -1, -1):
+            item = messages[i]
+            if item.get("role") == "assistant":
+                triples_string = item.get("content")
+                break
         
         if self.rag_method == "subgraph":
             has_error = False
@@ -1869,8 +1863,10 @@ class SGLangRollout(BaseRollout):
         elif self.text_linking and self.rag_method == "hipporag":
             has_error = False
             title_triple_dict = _req.interaction_kwargs["title_triple_dict"]
+            document_list = _req.interaction_kwargs.get("full_context", [])
+            triples_list = _req.interaction_kwargs["triples_list"]
             try:
-                kg = parse_triples_with_texts(title_triple_dict)
+                kg = parse_triples_with_texts(triples_list, title_triple_dict, document_list)
                 if kg.number_of_edges() == 0:
                     output_text = "Error: No valid triples found"
                     has_error = True
@@ -1887,7 +1883,7 @@ class SGLangRollout(BaseRollout):
                     kg=kg,
                     sampling_params=api_sampling_params,
                     supporting_context=supporting_context,
-                    full_context=full_context
+                    full_context=full_context,
                 )
                 output_text = answer
 
@@ -1945,7 +1941,7 @@ def parse_triples(triples_string: str) -> nx.DiGraph:
     except Exception as e:
         raise ValueError(f"Failed to parse triples_string: {e}")
 
-def parse_triples_with_texts(title_triple_dict:dict ) -> nx.DiGraph:
+def parse_triples_with_texts(triple_list: list,title_triple_dict:dict, document_list: list) -> nx.DiGraph:
     """Parses a string of triples into a directed graph (DiGraph).
 
     Args:
@@ -1956,37 +1952,27 @@ def parse_triples_with_texts(title_triple_dict:dict ) -> nx.DiGraph:
         nx.DiGraph: A directed graph representing the triples.
     """
     graph = nx.DiGraph()
-    print(f"Parsing triples with texts: {type(title_triple_dict)}")
-    # Parse the JSON string into a Python object
-    corrected_triples_dict = {}
-    for passage, triples_string in title_triple_dict.items():
-        print(f"Type of passage: {type(passage)}")
-        print(f"Type of triples_string: {type(triples_string)}")
-    
-    for passage, triples_string in title_triple_dict.items():
-        print(triples_json)
-        # Validate that the JSON is a list of dictionaries with the required keys
-        if not isinstance(triples_json, list):
-            raise ValueError("The triples_string must be a JSON array of triples.")
+    '''
+    triple_to_doc[t_idx] = {
+        "triple": triple,
+        "doc_id": best_doc,
+        "score": best_score,
+    }
+    '''
+    for t_idx in list(title_triple_dict.keys()):
+        triple = title_triple_dict[t_idx]["triple"]
+        subject = str(triple['subject'])
+        relation = str(triple['relation'])
+        obj = str(triple['object'])
+        graph.add_node(subject, node_type="entity")
+        graph.add_node(obj, node_type="entity")
+        graph.add_edge(subject, obj, relation=relation)
+        # add text node
+        best_doc_index = title_triple_dict[t_idx]["doc_id"]
+        best_doc = document_list[best_doc_index]
+        graph.add_node(best_doc, node_type="text")
+        graph.add_edge(subject, best_doc, relation="source")
+        graph.add_edge(obj, best_doc, relation="source")
         
-        
-        for triple in triples_json:
-            if not isinstance(triple, dict) or not all(key in triple for key in ['subject', 'relation', 'object']) or any(str(triple[key]).strip() == "" for key in ['subject', 'relation', 'object']):
-                continue
-            else:
-                corrected_triples_dict.setdefault(passage, []).append(triple)
-        # Create a directed graph and add edges for each triple
-        graph.add_node(passage, passage=True, node_type='passage')
-    print(f"Corrected triples dict: {corrected_triples_dict}")
-    for passage, triples in corrected_triples_dict.items():
-        graph.add_node(passage, passage=True, node_type='passage')
-        for triple in triples:
-            subject = str(triple['subject'])
-            relation = str(triple['relation'])
-            obj = str(triple['object'])
-            graph.add_edge(subject, obj, relation=relation, node_type='entity')
-            # add passage node and connect to subject and object
-            graph.add_edge(subject, passage, relation='source')
-            graph.add_edge(obj, passage, relation='source')
-    print(f"Graph has {graph.number_of_nodes()} nodes and {graph.number_of_edges()} edges.")
+    # print(f"Graph has {graph.number_of_nodes()} nodes and {graph.number_of_edges()} edges.")
     return graph

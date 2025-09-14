@@ -37,7 +37,6 @@ DOC_SIZE=15 # available: 8,12,15
 WITH_DISTRACT="True" # Only True is supported now
 TEXT_LINKING="False" # available: True, False
 
- /data/autograph/data/musique_validation_doc_size_15_distract_False_with_mcq_False_difficulty_medium_text_linking_False.parquet
 TRAIN_DATA="/data/autograph/data/musique_train_doc_size_${DOC_SIZE}_distract_${WITH_DISTRACT}_with_mcq_False_difficulty_${DIFFFICULTY}_text_linking_${TEXT_LINKING}.parquet"
 VAL_DATA="/data/autograph/data/musique_validation_doc_size_${DOC_SIZE}_distract_${WITH_DISTRACT}_with_mcq_False_difficulty_${DIFFFICULTY}_text_linking_${TEXT_LINKING}.parquet"
 

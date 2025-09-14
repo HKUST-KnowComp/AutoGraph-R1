@@ -17,6 +17,7 @@ class Reranker:
                 if attempt < max_retries - 1:
                     await asyncio.sleep(min(2 ** attempt, 100))  # Exponential backoff
                 else:
+                    print(f"Failed to get embeddings after {max_retries} attempts: {e}")
                     return torch.zeros((len(input_texts), 1024))  # Assuming embedding size is 1024
 
     async def compute_similarity(self, queries: list, documents: list) -> torch.Tensor:

@@ -239,15 +239,12 @@ async def process_musique_single_row(row, split_name, row_index, mcq_dict = None
         for key in document_key:
             hash_key = sha256(f"{key[0]}: {key[1]}".encode()).hexdigest()
             mcq_list.append(mcq_dict[hash_key])
-    if args.text_linking:
-        context_str = document_list[0]  # Use only the first document for text linking
-    else:
-        context_str = "\n".join(document_list)
-        context_str = context_str.rstrip("\n")
+    context_str = "\n".join(document_list)
+    context_str = context_str.rstrip("\n")
 
     prompt = [
         {"role": "system", "content": DEFAULT_SYSTEM_CONTENT},
-        {"role": "user", "content": f"Extract JSON array of knowledge graph triples for:{context_str}" if args.text_linking else context_str}
+        {"role": "user", "content": context_str}
     ]
     
     reward_model_data = {
