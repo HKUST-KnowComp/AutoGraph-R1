@@ -133,12 +133,11 @@ def compute_score(data_source, solution_str, ground_truth, extra_info=None) -> d
     if answer is None:
         return {
             'score': 0.0,
-            'f1_score': 0.0,
             'recall': 0.0
         }
 
     # Compute F1 metrics
-    f1_score, precision, recall = f1_check(answer, ground_truth["target"])
+    # f1_score, precision, recall = f1_check(answer, ground_truth["target"])
 
     try:
         model_recall = float(model_recall)
