@@ -13,7 +13,7 @@ class Reranker:
                 results = await self.emb_client.embeddings.create(input=input_texts, model=self.model_name)
                 embeddings = torch.tensor([d.embedding for d in results.data])
                 return embeddings
-            except (APIConnectionError, Timeout, asyncio.TimeoutError) as e:
+            except Exception as e:
                 if attempt < max_retries - 1:
                     await asyncio.sleep(min(2 ** attempt, 100))  # Exponential backoff
                 else:
