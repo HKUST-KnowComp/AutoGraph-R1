@@ -153,6 +153,5 @@ def compute_score(data_source, solution_str, ground_truth, extra_info=None) -> d
 
     return {
         'score': reward,
-        'f1_score': f1_score,
         'recall': model_recall
     }
