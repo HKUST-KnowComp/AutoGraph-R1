@@ -32,20 +32,23 @@ PROJECT_DIR="$(pwd)"
 CONFIG_PATH="$PROJECT_DIR/config"
 
 # AutoGraph parameters
-DIFFFICULTY="medium" # available: easy, medium
+DIFFFICULTY="easy" # available: easy, medium
 DOC_SIZE=15 # available: 8,12,15
 WITH_DISTRACT="True" # Only True is supported now
-TEXT_LINKING="False" # available: True, False
+TEXT_LINKING="True" # available: True, False
+F1_REWARD="False" # available: True, False
 
 TRAIN_DATA="/data/autograph/data/musique_train_doc_size_${DOC_SIZE}_distract_${WITH_DISTRACT}_with_mcq_False_difficulty_${DIFFFICULTY}_text_linking_${TEXT_LINKING}.parquet"
 VAL_DATA="/data/autograph/data/musique_validation_doc_size_${DOC_SIZE}_distract_${WITH_DISTRACT}_with_mcq_False_difficulty_${DIFFFICULTY}_text_linking_${TEXT_LINKING}.parquet"
 
 TIMESTAMP=$(date +"%Y%m%d_%H%M%S")
 
-CHECKPOINT_DIR="/data/autograph/checkpoints/${TIMESTAMP}_qwen2.5-7b-autograph-distract_${DIFFFICULTY}-docsize${DOC_SIZE}-textlinking${TEXT_LINKING}"
+CHECKPOINT_DIR="/data/autograph/checkpoints/${TIMESTAMP}_qwen2.5-7b-autograph-distract_${DIFFFICULTY}-docsize${DOC_SIZE}-textlinking${TEXT_LINKING}-f1${F1_REWARD}"
 
 if [ "$TEXT_LINKING" = "True" ]; then
-    reward_fn_file_path="verl/third_party/autograph_r1/precision_reward.py"
+    reward_fn_file_path="verl/third_party/autograph_r1/recall_reward.py"
+elif [ "$F1_REWARD" = "True" ]; then
+    reward_fn_file_path="verl/third_party/autograph_r1/f1_reward.py"
 else
     reward_fn_file_path="verl/third_party/autograph_r1/reward.py"
 fi

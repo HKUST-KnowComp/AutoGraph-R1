@@ -20,6 +20,7 @@ class RetrieverConfig:
         topN_edges: int = 10,
         weight_adjust: float = 0.05,
         topN_passages: int = 5,
+        topN_retrieval_edges: int = 20,
     ):
         self.name = name
         self.max_length = max_length
@@ -38,6 +39,9 @@ class RetrieverConfig:
         self.topN_edges = topN_edges
         self.weight_adjust = weight_adjust
         self.topN_passages = topN_passages
+
+        # Simple Edge Retrieval specific parameters
+        self.topN_retrieval_edges = topN_retrieval_edges
 
 # --- Base Retriever ---
 class BaseRetriever(ABC):

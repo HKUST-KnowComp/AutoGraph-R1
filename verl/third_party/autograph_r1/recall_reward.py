@@ -146,7 +146,7 @@ def compute_score(data_source, solution_str, ground_truth, extra_info=None) -> d
         model_recall = 0.0
 
     # Compute reward: f1 score + model recall
-    reward = f1_score + model_recall
+    reward = model_recall
 
     # Clip to non-negative (should already be non-negative)
     reward = max(0.0, reward)

@@ -1860,6 +1860,27 @@ class SGLangRollout(BaseRollout):
                     sub_queries=decomposed_queries
                 )
                 output_text = answer
+        elif self.rag_method == "edge":
+            has_error = False
+            try:
+                kg = parse_triples(triples_string)
+                if kg.number_of_edges() == 0:
+                    output_text = "Error: No valid triples found"
+                    has_error = True
+            except Exception as e:
+                output_text = "Error parsing triples"
+                has_error = True
+            
+            if not has_error:
+                from autograph.rag_server.subgraph_retriever import SubgraphRetriever
+                retriever = SubgraphRetriever(self.retriever_config, self.llm_generator, self.reranker)
+                answer = await retriever.retrieve(
+                    question=question,
+                    kg=kg,
+                    sampling_params=api_sampling_params,
+                    sub_queries=decomposed_queries
+                )
+                output_text = answer
         elif self.text_linking and self.rag_method == "hipporag":
             has_error = False
             title_triple_dict = _req.interaction_kwargs["title_triple_dict"]
