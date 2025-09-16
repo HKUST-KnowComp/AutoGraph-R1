@@ -106,6 +106,12 @@ As an advanced reading comprehension assistant, your task is to analyze extracte
 Your response start after "Thought: ", where you will methodically break down the reasoning process, illustrating how you arrive at conclusions. 
 Conclude with "Answer: " to present a concise, definitive response as a noun phrase, no elaborations.
 """
+# Prompt that ask LLM if the answer can be deduced from the given KG context, return yes or no only
+VERIFY_ANSWER_PROMPT = """
+As an advanced reading comprehension assistant, your task is to evaluate whether the provided knowledge graph (KG) context contains sufficient information to deduce the given true answer to the question. 
+Analyze the KG context carefully and determine if it fully supports the true answer without requiring external knowledge. Respond with only 'Yes' or 'No', indicating whether the true answer can be deduced from the KG context.
+"""
+
 FEW_SHOT_EXAMPLE = [{"role": "user", "content": """
 Given the query: 'Who painted the Mona Lisa?'
 and the Knowledge Graph path: '[{'subject': 'Leonardo da Vinci', 'relation': 'painted', 'object': 'Mona Lisa'}]'

@@ -1857,7 +1857,8 @@ class SGLangRollout(BaseRollout):
                     question=question,
                     kg=kg,
                     sampling_params=api_sampling_params,
-                    sub_queries=decomposed_queries
+                    sub_queries=decomposed_queries,
+                    answer=_req.interaction_kwargs.get("ground_truth")[0]
                 )
                 output_text = answer
         elif self.rag_method == "edge":
@@ -1872,13 +1873,12 @@ class SGLangRollout(BaseRollout):
                 has_error = True
             
             if not has_error:
-                from autograph.rag_server.subgraph_retriever import SubgraphRetriever
-                retriever = SubgraphRetriever(self.retriever_config, self.llm_generator, self.reranker)
+                from autograph.rag_server.edge_retriever import EdgeRetriever
+                retriever = EdgeRetriever(self.retriever_config, self.llm_generator, self.reranker)
                 answer = await retriever.retrieve(
                     question=question,
                     kg=kg,
                     sampling_params=api_sampling_params,
-                    sub_queries=decomposed_queries
                 )
                 output_text = answer
         elif self.text_linking and self.rag_method == "hipporag":

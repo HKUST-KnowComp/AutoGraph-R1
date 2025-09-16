@@ -42,7 +42,7 @@ class EdgeRetriever(BaseRetriever):
             return f"Instruct: {task}\nQuery: {sub_query}"
         
         self.query_instruct = get_query_instruct(query)
-        self.query_embedding = await self.reranker.embed([self.query_instruct])[0]
+        self.query_embedding = await self.reranker.embed([self.query_instruct])
         
 
 
@@ -50,11 +50,14 @@ class EdgeRetriever(BaseRetriever):
         """Retrieve a subgraph (or full KG) and generate an answer."""
         self.KG = kg
         self.sampling_params = sampling_params
-        await self.index_kg(kg, question)
+        await self.index_kg(question, kg)
 
         # retrieve top N edges
-        edge_scores = np.dot(self.triple_embeddings, self.query_embedding)
-        top_edge_indices = np.argsort(edge_scores)[-self.topN_edges:][::-1]  # Indices of top N edges
+        edge_scores = self.query_embedding @ self.triple_embeddings.T  # Shape: (1, num_edges)
+        edge_scores = edge_scores.flatten()  # Shape: (num_edges,)
+        top_edge_count = min(self.topN_edges, len(edge_scores))
+        edge_scores_np = edge_scores.detach().cpu().numpy()
+        top_edge_indices = np.argsort(edge_scores_np)[-top_edge_count:][::-1]  # Indices of top N edges
         top_edges = [list(self.KG.edges)[i] for i in top_edge_indices]
         # construct top N edges string
         edge_str_lst = []

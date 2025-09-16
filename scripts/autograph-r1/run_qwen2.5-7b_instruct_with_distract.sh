@@ -33,14 +33,22 @@ PROJECT_DIR="$(pwd)"
 CONFIG_PATH="$PROJECT_DIR/config"
 
 # AutoGraph parameters
-DIFFFICULTY="medium" # available: easy, medium
+DIFFFICULTY="easy" # available: easy, medium
 DOC_SIZE=15 # available: 8,12,15
-WITH_DISTRACT="True" # Only True is supported now
-TEXT_LINKING="True" # available: True, False
+WITH_DISTRACT="False" # Only True is supported now
+TEXT_LINKING="False" # available: True, False
 F1_REWARD="False" # available: True, False
+MIX_DATA="True" # available: True, False
+DEDUCE_REWARD="True"
 
 TRAIN_DATA="/data/autograph/data/musique_train_doc_size_${DOC_SIZE}_distract_${WITH_DISTRACT}_with_mcq_False_difficulty_${DIFFFICULTY}_text_linking_${TEXT_LINKING}.parquet"
 VAL_DATA="/data/autograph/data/musique_validation_doc_size_${DOC_SIZE}_distract_${WITH_DISTRACT}_with_mcq_False_difficulty_${DIFFFICULTY}_text_linking_${TEXT_LINKING}.parquet"
+
+if [ "$MIX_DATA" = "True" ]; then
+    TRAIN_DATA="/data/autograph/data/mixed_hotpot_musique_train_doc_size_15_distract_${WITH_DISTRACT}.parquet"
+    VAL_DATA="/data/autograph/data/mixed_hotpot_musique_validation_doc_size_15_distract_${WITH_DISTRACT}.parquet"
+    DOC_SIZE="5"
+fi
 
 TIMESTAMP=$(date +"%Y%m%d_%H%M%S")
 
@@ -50,6 +58,8 @@ if [ "$TEXT_LINKING" = "True" ]; then
     reward_fn_file_path="verl/third_party/autograph_r1/recall_reward.py"
 elif [ "$F1_REWARD" = "True" ]; then
     reward_fn_file_path="verl/third_party/autograph_r1/f1_reward.py"
+elif [ "$DEDUCE_REWARD" = "True" ]; then
+    reward_fn_file_path="verl/third_party/autograph_r1/deduce_reward.py"
 else
     reward_fn_file_path="verl/third_party/autograph_r1/reward.py"
 fi
@@ -98,7 +108,7 @@ python3 -m verl.trainer.main_ppo \
     trainer.val_before_train=False \
     trainer.logger=['console','wandb'] \
     trainer.project_name='auto_graph_rl' \
-    trainer.experiment_name="azure-qwen2.5-7b-auto-graph-rl-distract-${DIFFFICULTY}-docsize${DOC_SIZE}-text-linking${TEXT_LINKING}-f1-${F1_REWARD}" \
+    trainer.experiment_name="azure-qwen2.5-7b-auto-graph-rl-distract-${DIFFFICULTY}-docsize${DOC_SIZE}-text-linking${TEXT_LINKING}-f1-${F1_REWARD}-deduce-${DEDUCE_REWARD}" \
     trainer.n_gpus_per_node=2 \
     trainer.nnodes=1 \
     trainer.total_training_steps=50 \

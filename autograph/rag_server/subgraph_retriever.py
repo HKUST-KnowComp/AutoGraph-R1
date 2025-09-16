@@ -10,7 +10,7 @@ from autograph.rag_server.llm_api import LLMGenerator
 from autograph.rag_server.reranker_api import Reranker
 from autograph.rag_server.base_retriever import RetrieverConfig, BaseRetriever
 import math
-from autograph.rag_server.tog_prompt import REASONING_PROMPT, ANSWER_GENERATION_PROMPT, FEW_SHOT_EXAMPLE
+from autograph.rag_server.tog_prompt import REASONING_PROMPT, ANSWER_GENERATION_PROMPT, FEW_SHOT_EXAMPLE, VERIFY_ANSWER_PROMPT
 import jellyfish
 import logging 
 
@@ -138,6 +138,7 @@ class SubgraphRetriever(BaseRetriever):
     async def retrieve(self, question, kg: DiGraph, sampling_params: dict, **kwargs) -> str:
         """Retrieve a subgraph (or full KG) and generate an answer."""
         self.sub_queries = kwargs.get("sub_queries", [])
+        self.answer = kwargs.get("answer", "unknown")
         self.KG = kg
         self.sampling_params = sampling_params
         await self.index_kg(kg)
@@ -151,7 +152,7 @@ class SubgraphRetriever(BaseRetriever):
             subgraph = await self.construct_subgraph(question, initial_nodes)
 
         # Generate answer using the subgraph (or full KG)
-        answer = await self.generate_answer(question, subgraph)
+        answer = await self.deduce_answer(question, subgraph, self.answer)
 
         total_edges = len(self.KG.edges)
         subgraph_edges = len(subgraph.edges)
@@ -167,7 +168,7 @@ class SubgraphRetriever(BaseRetriever):
     async def generate_answer(self, query, subgraph: DiGraph):
         """Generate an answer using the subgraph (or full KG) with a single LLM call."""
         triples = [(u, d["relation"], v) for u, v, d in subgraph.edges(data=True)]
-        triples_string = ". ".join([f"({s}, {r}, {o})" for s, r, o in triples])
+        triples_string = ". ".join([f"({s}-{r}->{o})" for s, r, o in triples])
         if not triples_string:
             triples_string = "No relevant triples found."
         prompt = ANSWER_GENERATION_PROMPT
@@ -184,6 +185,29 @@ class SubgraphRetriever(BaseRetriever):
         # if answer is none
         if not generated_text:
             return "none"
+        return generated_text
+    
+    async def deduce_answer(self, query, subgraph: DiGraph, answer):
+        """Generate an answer using the subgraph (or full KG) with a single LLM call."""
+        triples = [(u, d["relation"], v) for u, v, d in subgraph.edges(data=True)]
+        triples_string = ". ".join([f"({s}-{r}->{o})" for s, r, o in triples])
+        if not triples_string:
+            triples_string = "No relevant triples found."
+        prompt = VERIFY_ANSWER_PROMPT
+        messages = [
+            {"role": "system", "content": prompt},
+        ]
+        self.sampling_params["temperature"] = self.config.temperature_reasoning
+        messages.append({"role": "user", "content": f"Knowledge graph (KG) context:{triples_string}\nQuestion:{query}\nTrue Answer:{answer}\nCan the true answer be deduced from the KG context? Answer 'Yes' or 'No' only."})
+        generated_text = await self.llm_generator.generate_response(messages, **self.sampling_params)
+        generated_text = generated_text.strip().lower()
+        if "yes" in generated_text:
+            generated_text = 'yes'
+        elif "no" in generated_text:
+            generated_text = 'no'
+        # if answer is none
+        if not generated_text:
+            return "no"
         return generated_text
 
     async def compute_semantic_reward(self, fuzzy_threshold=0.85):

@@ -90,6 +90,7 @@ class HippoRAG2Retriever(BaseRetriever):
         node_score_dict = {}
 
         for i, edge in enumerate(before_filter_edge_json['fact']):
+            # "China national day" -> is on -> 10-1
             head, relation, tail = edge[0], edge[1], edge[2]
             curr_score = node_scores[i]
             
