@@ -215,8 +215,14 @@ class HippoRAG2Retriever(BaseRetriever):
             self.precision_reward = 1.0
             return 1.0
         ground_truth_set = set(ground_truth)
-        intersection = retrieved_set.intersection(ground_truth_set)
-        self.precision_reward = len(intersection) / len(retrieved_set) if len(retrieved_set) > 0 else 0.0
+        # instead of using intersection, since the retrieve test is in "Doc i: content" and ground truth is only "content", we use substring match
+        match_count = 0
+        for retrieved in retrieved_set:
+            for gt in ground_truth_set:
+                if gt in retrieved:
+                    match_count += 1
+                    break
+        self.precision_reward = match_count / len(retrieved_set) if len(retrieved_set) > 0 else 0.0
         return self.precision_reward
 
     async def calculate_recall_reward(self, retrieved_passages: List[str], ground_truths: List[str]):
@@ -226,6 +232,12 @@ class HippoRAG2Retriever(BaseRetriever):
             self.recall_reward = 1.0
             return 1.0
         ground_truth_set = set(ground_truths)
-        intersection = retrieved_set.intersection(ground_truth_set)
-        self.recall_reward = len(intersection) / len(ground_truth_set) if len(ground_truth_set) > 0 else 0.0
+        # instead of using intersection, since the retrieve test is in "Doc i: content" and ground truth is only "content", we use substring match
+        match_count = 0
+        for gt in ground_truth_set:
+            for retrieved in retrieved_set:
+                if gt in retrieved:
+                    match_count += 1
+                    break
+        self.recall_reward = match_count / len(ground_truth_set) if len(ground_truth_set) > 0 else 0.0
         return self.recall_reward

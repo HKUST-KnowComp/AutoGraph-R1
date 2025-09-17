@@ -371,7 +371,7 @@ class SGLangRollout(BaseRollout):
             self.reranker = Reranker(self.emb_client)
             self.llm_generator = LLMGenerator(self._engine, model_name, backend="verl")
             self.text_linking = self.config.get("text_linking", False)
-
+            self.iterative = self.config.get("iterative", False)
             # using freeze api for answer generator
             self.freeze_answer_api = self.config.get("freeze_answer_api", False)
             if self.freeze_answer_api:
@@ -1069,7 +1069,7 @@ class SGLangRollout(BaseRollout):
                     )
 
                 interaction = self.interaction_map[interaction_name]
-                if self.text_linking and rag_state == AutoGraphStateEnum.CONSTRUCTING:
+                if self.text_linking and rag_state == AutoGraphStateEnum.CONSTRUCTING and not self.iterative:
                     # create the triples to link the title and text
                     title_triple_dict = {}
                     triples_list = []
@@ -1088,11 +1088,9 @@ class SGLangRollout(BaseRollout):
                     if not should_terminate_sequence:
                         triples_list.extend(triples)
                         document_list = _req.interaction_kwargs.get("full_context", [])
-
                         model_tokenizer = self.processing_class  # tokenizer with .tokenize()
-
-                        # --- New Part: Link triples to documents by token overlap ---
-                        triple_to_doc = {}
+                        
+                        
 
                         # preprocess documents into token counters
                         doc_tokens = [set(model_tokenizer.tokenize(doc.lower())) for doc in document_list]
@@ -1129,7 +1127,72 @@ class SGLangRollout(BaseRollout):
                         # save results back into kwargs
                         _req.interaction_kwargs["title_triple_dict"] = triple_to_doc
                         _req.interaction_kwargs["triples_list"] = triples_list
-
+                    
+                if self.text_linking and rag_state == AutoGraphStateEnum.CONSTRUCTING and self.iterative:
+                    # create the triples to link the title and text
+                    title_triple_dict = {}
+                    triples_list = []
+                    should_terminate_sequence = False
+                    for i in range(len(messages) - 1, -1, -1):
+                        item = messages[i]
+                        if item.get("role") == "assistant":
+                            content = item.get("content")
+                            break
+                    try:
+                        triples = json_repair.loads(content)
+                        assert isinstance(triples, list), "triples should be a list"
+                    except Exception:
+                        triples = []
+                        should_terminate_sequence = True
+                    if not should_terminate_sequence:
+                        triples_list = []
+                        triple_to_doc = {}
+                        document_list = _req.interaction_kwargs.get("full_context", [])
+                        model_tokenizer = self.processing_class  # tokenizer with .tokenize()
+                        if validate_triples(triples):
+                            for triple in triples:
+                                triple_to_doc[len(triple_to_doc)] = {
+                                    "triple": triple,
+                                    "doc_id": 0,
+                                }
+                        # get the system prompt 
+                        for i in range(len(messages)):
+                            item = messages[i]
+                            if item.get("role") == "system":
+                                system_prompt = item.get("content")
+                                break
+                        # Iterative Generation here
+                        for doc, i in enumerate(document_list[1:]):
+                            messages = [
+                                {"role": "system", "content": system_prompt},
+                                {"role": "user", "content": f'Extracts for Document{i+1}: {doc}'}
+                            ]
+                            prompt_ids = self.processing_class.apply_chat_template(messages)
+                            output = await self._handle_engine_generate(prompt_ids, request_sampling_params)
+                            content = output["text"]
+                            try:
+                                triples = json_repair.loads(content)
+                                assert isinstance(triples, list), "triples should be a list"
+                            except Exception:
+                                triples = []
+                                _req.messages.append({"role": "assistant", "content": content})
+                                should_terminate_sequence = True
+                                break
+                            if not validate_triples(triples):
+                                _req.messages.append({"role": "assistant", "content": content})
+                                should_terminate_sequence = True
+                                break
+                            for triple in triples:
+                                triple_to_doc[len(triple_to_doc)] = {
+                                    "triple": triple,
+                                    "doc_id": i + 1,
+                                }
+                            triples_list.extend(triples)
+                            _req.add_user_message(self.processing_class, f'Extracts for Document{i+1}: {doc}')
+                            _req.add_assistant_message(self.processing_class, content)
+                        # save results back into kwargs
+                        _req.interaction_kwargs["title_triple_dict"] = triple_to_doc
+                        _req.interaction_kwargs["triples_list"] = triples_list
                 should_terminate_sequence, content, reward, metrics = await interaction.generate_response(
                     _req.request_id, messages, 
                     current_turn = user_turns, 
@@ -1997,3 +2060,22 @@ def parse_triples_with_texts(triple_list: list,title_triple_dict:dict, document_
         
     # print(f"Graph has {graph.number_of_nodes()} nodes and {graph.number_of_edges()} edges.")
     return graph
+
+def validate_triples(triples: list) -> bool:
+    """Validates a list of triples.
+
+    Args:
+        triples (list): A list of triples, where each triple is a dict
+                        with 'subject', 'relation', and 'object' keys.
+
+    Returns:
+        bool: True if all triples are valid, False otherwise.
+    """
+    if not isinstance(triples, list):
+        return False
+    
+    for triple in triples:
+        if not isinstance(triple, dict) or not all(key in triple for key in ['subject', 'relation', 'object']) or any(str(triple[key]).strip() == "" for key in ['subject', 'relation', 'object']):
+            return False
+    
+    return True

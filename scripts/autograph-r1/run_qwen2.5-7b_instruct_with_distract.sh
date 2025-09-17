@@ -46,7 +46,7 @@ VAL_DATA="/data/autograph/data/musique_validation_doc_size_${DOC_SIZE}_distract_
 
 if [ "$MIX_DATA" = "True" ]; then
     TRAIN_DATA="/data/autograph/data/mixed_hotpot_musique_train_doc_size_15_distract_${WITH_DISTRACT}.parquet"
-    VAL_DATA="/data/autograph/data/mixed_hotpot_musique_validation_doc_size_15_distract_${WITH_DISTRACT}.parquet"
+    VAL_DATA="/data/autograph/data/mixed_hotpot_musique_valid_doc_size_15_distract_${WITH_DISTRACT}.parquet"
     DOC_SIZE="5"
 fi
 

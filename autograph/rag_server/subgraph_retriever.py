@@ -63,12 +63,12 @@ class SubgraphRetriever(BaseRetriever):
         def get_subquery_instruct(sub_query: str) -> str:
             task = "Given a question with its golden answer, retrieve the most relevant knowledge graph triple."
             return f"Instruct: {task}\nQuery: {sub_query}"
-        sub_query_texts = []
-        for sub_query in self.sub_queries:
-            sub_query_text = get_subquery_instruct(sub_query)
-            sub_query_texts.append(sub_query_text)
-        self.sub_queries_embeddings = await self.reranker.embed(sub_query_texts)
-        assert len(self.sub_queries_embeddings) == len(self.sub_queries), f"len(self.sub_queries_embeddings): {len(self.sub_queries_embeddings)}, len(self.sub_queries): {len(self.sub_queries)}"
+        # sub_query_texts = []
+        # for sub_query in self.sub_queries:
+        #     sub_query_text = get_subquery_instruct(sub_query)
+        #     sub_query_texts.append(sub_query_text)
+        # self.sub_queries_embeddings = await self.reranker.embed(sub_query_texts)
+        # assert len(self.sub_queries_embeddings) == len(self.sub_queries), f"len(self.sub_queries_embeddings): {len(self.sub_queries_embeddings)}, len(self.sub_queries): {len(self.sub_queries)}"
         
 
     async def retrieve_topk_nodes(self, query):

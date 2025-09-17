@@ -4,7 +4,7 @@ import os
 
 # get all files end with .parquet in data/autograph/data
 data_files = [f for f in os.listdir("/data/autograph/data") if f.endswith(".parquet")]
-data_files = [f for f in data_files if 'text_linking' not in f]
+data_files = [f for f in data_files if 'mixed' in f]
 
 print(f"Found {len(data_files)} parquet files.")
 # get targeted doc size x in the file name it contains 'doc_size_x'
