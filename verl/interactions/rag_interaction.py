@@ -51,7 +51,7 @@ class RAGInteraction(BaseInteraction):
         """
 
         should_terminate_sequence = False
-
+        iterative = kwargs.get("iterative", True)
         content = ""
         for i in range(len(messages) - 1, -1, -1):
             item = messages[i]
@@ -81,10 +81,21 @@ class RAGInteraction(BaseInteraction):
             triples_keys = ["subject", "relation", "object"]
             # check if all key are present in all items
             if all(isinstance(item, dict) and all(key in item for key in triples_keys) for item in result_json):
-                should_terminate_sequence = False
-                response = "You will perform graph based RAG based on your constructed knowledge graph."
-                reward = 1.0
-                self._instance_dict[instance_id]["rag_state"] = True
+                if iterative:
+                    should_terminate_sequence = False
+                    remaining_context = kwargs["remaining_context"]
+                    if len(remaining_context) > 0:
+                        document = remaining_context[0]
+                        response = f"Extracts for {document}"
+                    else:
+                        response = "You will perform graph based RAG based on your constructed knowledge graph."
+                        self._instance_dict[instance_id]["rag_state"] = True
+                    reward = 1.0
+                else:
+                    should_terminate_sequence = False
+                    response = "You will perform graph based RAG based on your constructed knowledge graph."
+                    reward = 1.0
+                    self._instance_dict[instance_id]["rag_state"] = True
             else:
                 should_terminate_sequence = True
                 response = "The response is not in the correct format."

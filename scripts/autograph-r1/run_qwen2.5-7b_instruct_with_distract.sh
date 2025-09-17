@@ -35,19 +35,32 @@ CONFIG_PATH="$PROJECT_DIR/config"
 # AutoGraph parameters
 DIFFFICULTY="easy" # available: easy, medium
 DOC_SIZE=15 # available: 8,12,15
-WITH_DISTRACT="False" # Only True is supported now
-TEXT_LINKING="False" # available: True, False
+WITH_DISTRACT="True" # Only True is supported now
+TEXT_LINKING="True" # available: True, False
 F1_REWARD="False" # available: True, False
 MIX_DATA="True" # available: True, False
-DEDUCE_REWARD="True"
+DEDUCE_REWARD="False"
+ITERATIVE="True"
 
 TRAIN_DATA="/data/autograph/data/musique_train_doc_size_${DOC_SIZE}_distract_${WITH_DISTRACT}_with_mcq_False_difficulty_${DIFFFICULTY}_text_linking_${TEXT_LINKING}.parquet"
 VAL_DATA="/data/autograph/data/musique_validation_doc_size_${DOC_SIZE}_distract_${WITH_DISTRACT}_with_mcq_False_difficulty_${DIFFFICULTY}_text_linking_${TEXT_LINKING}.parquet"
 
-if [ "$MIX_DATA" = "True" ]; then
+MAX_ASSISTANT_TURN=2
+MAX_USER_TURN=2
+
+if [ "$MIX_DATA" = "True" ] && [ "$ITERATIVE" = "False" ]; then
+    # Case 1: MIX_DATA=True, ITERATIVE=False
     TRAIN_DATA="/data/autograph/data/mixed_hotpot_musique_train_doc_size_15_distract_${WITH_DISTRACT}.parquet"
     VAL_DATA="/data/autograph/data/mixed_hotpot_musique_valid_doc_size_15_distract_${WITH_DISTRACT}.parquet"
     DOC_SIZE="5"
+
+elif [ "$MIX_DATA" = "True" ] && [ "$ITERATIVE" = "True" ]; then
+    # Case 2: MIX_DATA=True, ITERATIVE=True
+    TRAIN_DATA="/data/autograph/data/mixed_hotpot_musique_train_doc_size_15_distract_${WITH_DISTRACT}_iterate.parquet"
+    VAL_DATA="/data/autograph/data/mixed_hotpot_musique_valid_doc_size_15_distract_${WITH_DISTRACT}_iterate.parquet"
+    DOC_SIZE="15"
+    MAX_ASSISTANT_TURN=16
+    MAX_USER_TURN=16
 fi
 
 TIMESTAMP=$(date +"%Y%m%d_%H%M%S")
@@ -71,8 +84,8 @@ python3 -m verl.trainer.main_ppo \
     algorithm.use_kl_in_reward=False \
     data.train_batch_size=64 \
     data.val_batch_size=64 \
-    data.max_prompt_length=6144 \
-    data.max_response_length=6144 \
+    data.max_prompt_length=16384 \
+    data.max_response_length=16384 \
     data.filter_overlong_prompts=True \
     data.shuffle=True \
     data.truncation='error' \
@@ -93,14 +106,14 @@ python3 -m verl.trainer.main_ppo \
     actor_rollout_ref.model.enable_activation_offload=True \
     actor_rollout_ref.actor.fsdp_config.param_offload=False \
     actor_rollout_ref.actor.fsdp_config.optimizer_offload=False \
-    actor_rollout_ref.rollout.max_num_batched_tokens=12288 \
-    actor_rollout_ref.rollout.max_model_len=12288 \
+    actor_rollout_ref.rollout.max_num_batched_tokens=32768 \
+    actor_rollout_ref.rollout.max_model_len=32768 \
     actor_rollout_ref.rollout.tensor_model_parallel_size=1 \
     actor_rollout_ref.rollout.name=sglang \
     actor_rollout_ref.rollout.gpu_memory_utilization=0.25 \
     actor_rollout_ref.rollout.n=5 \
-    actor_rollout_ref.rollout.multi_turn.max_assistant_turns=2 \
-    actor_rollout_ref.rollout.multi_turn.max_user_turns=2 \
+    actor_rollout_ref.rollout.multi_turn.max_assistant_turns=$MAX_ASSISTANT_TURN \
+    actor_rollout_ref.rollout.multi_turn.max_user_turns=$MAX_USER_TURN \
     actor_rollout_ref.rollout.multi_turn.interaction_config_path='config/interaction_config/autograph_interaction_config.yaml' \
     actor_rollout_ref.ref.fsdp_config.param_offload=True \
     algorithm.use_kl_in_reward=False \
@@ -108,7 +121,7 @@ python3 -m verl.trainer.main_ppo \
     trainer.val_before_train=False \
     trainer.logger=['console','wandb'] \
     trainer.project_name='auto_graph_rl' \
-    trainer.experiment_name="azure-qwen2.5-7b-auto-graph-rl-distract-${DIFFFICULTY}-docsize${DOC_SIZE}-text-linking${TEXT_LINKING}-f1-${F1_REWARD}-deduce-${DEDUCE_REWARD}" \
+    trainer.experiment_name="azure-qwen2.5-7b-auto-graph-rl-distract-${DIFFFICULTY}-docsize${DOC_SIZE}-text-linking${TEXT_LINKING}-deduce-${DEDUCE_REWARD}" \
     trainer.n_gpus_per_node=2 \
     trainer.nnodes=1 \
     trainer.total_training_steps=50 \

@@ -68,7 +68,7 @@ class HippoRAG2Retriever(BaseRetriever):
 
     async def query2edge(self, query, topN = 10):
         def get_query_instruct(sub_query: str) -> str:
-            task = "Given a question with its golden answer, retrieve the most relevant knowledge graph triple."
+            task = "Given a question, retrieve the most relevant knowledge graph triple that can help answer the question."
             return f"Instruct: {task}\nQuery: {sub_query}"
         query_emb = await self.reranker.embed([get_query_instruct(query)])
         query_emb = query_emb[0].cpu().numpy()

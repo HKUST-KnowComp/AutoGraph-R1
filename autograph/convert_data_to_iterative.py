@@ -43,7 +43,7 @@ for targeted_doc_size, doc_file_name in zip(doc_size_list, data_files):
         docs = extract_docs(prompts[1]["content"])
         # Only keep Document 1
         if 1 in docs:
-            prompts[1]["content"] = f"Extracts for Document 1: {docs[1]}"
+            prompts[1]["content"] = f"Extracts for {docs[1]}"
         else:
             print(f"Warning: Document 1 not found in row {idx}")
             prompts[1]["content"] = "Document 1: "

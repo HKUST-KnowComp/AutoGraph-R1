@@ -47,7 +47,7 @@ from sglang.srt.utils import (
 from tensordict import TensorDict
 from torch.distributed.device_mesh import DeviceMesh, init_device_mesh
 from torch.nn.utils.rnn import pad_sequence
-from transformers import PreTrainedTokenizer, PreTrainedTokenizerFast, ProcessorMixin
+from transformers import PreTrainedTokenizer, PreTrainedTokenizerFast, ProcessorMixin, AutoTokenizer
 
 from verl import DataProto
 from verl.interactions.base import BaseInteraction
@@ -354,6 +354,7 @@ class SGLangRollout(BaseRollout):
         if self.use_api:
             # Model checking
             model_name = actor_module
+            self.tokenizer = AutoTokenizer.from_pretrained(model_name)
             api_service_provider = config_parser['vllm_emb']
             print('using local initialized model for RAG')
             self.use_local_actor_for_rag = True
@@ -907,6 +908,7 @@ class SGLangRollout(BaseRollout):
         user_turn_rewards = []
 
         rag_state = AutoGraphStateEnum.CONSTRUCTING 
+        _req.interaction_kwargs['remaining_context'] = _req.interaction_kwargs.get("full_context", [])
 
         # Create request-level sampling parameters
         request_sampling_params = self.sampling_params.copy()
@@ -1071,7 +1073,6 @@ class SGLangRollout(BaseRollout):
                 interaction = self.interaction_map[interaction_name]
                 if self.text_linking and rag_state == AutoGraphStateEnum.CONSTRUCTING and not self.iterative:
                     # create the triples to link the title and text
-                    title_triple_dict = {}
                     triples_list = []
                     should_terminate_sequence = False
                     for i in range(len(messages) - 1, -1, -1):
@@ -1130,8 +1131,6 @@ class SGLangRollout(BaseRollout):
                     
                 if self.text_linking and rag_state == AutoGraphStateEnum.CONSTRUCTING and self.iterative:
                     # create the triples to link the title and text
-                    title_triple_dict = {}
-                    triples_list = []
                     should_terminate_sequence = False
                     for i in range(len(messages) - 1, -1, -1):
                         item = messages[i]
@@ -1145,58 +1144,31 @@ class SGLangRollout(BaseRollout):
                         triples = []
                         should_terminate_sequence = True
                     if not should_terminate_sequence:
-                        triples_list = []
-                        triple_to_doc = {}
-                        document_list = _req.interaction_kwargs.get("full_context", [])
+                        document_list = _req.interaction_kwargs.get("remaining_context", [])
+                        processed_docs = _req.interaction_kwargs.get("processed_docs", [])
+                        triples_list = _req.interaction_kwargs.get("triples_list", [])
+                        triple_to_doc = _req.interaction_kwargs.get("title_triple_dict", {})
                         model_tokenizer = self.processing_class  # tokenizer with .tokenize()
                         if validate_triples(triples):
                             for triple in triples:
                                 triple_to_doc[len(triple_to_doc)] = {
                                     "triple": triple,
-                                    "doc_id": 0,
+                                    "doc_id": len(processed_docs),
                                 }
-                        # get the system prompt 
-                        for i in range(len(messages)):
-                            item = messages[i]
-                            if item.get("role") == "system":
-                                system_prompt = item.get("content")
-                                break
-                        # Iterative Generation here
-                        for doc, i in enumerate(document_list[1:]):
-                            messages = [
-                                {"role": "system", "content": system_prompt},
-                                {"role": "user", "content": f'Extracts for Document{i+1}: {doc}'}
-                            ]
-                            prompt_ids = self.processing_class.apply_chat_template(messages)
-                            output = await self._handle_engine_generate(prompt_ids, request_sampling_params)
-                            content = output["text"]
-                            try:
-                                triples = json_repair.loads(content)
-                                assert isinstance(triples, list), "triples should be a list"
-                            except Exception:
-                                triples = []
-                                _req.messages.append({"role": "assistant", "content": content})
-                                should_terminate_sequence = True
-                                break
-                            if not validate_triples(triples):
-                                _req.messages.append({"role": "assistant", "content": content})
-                                should_terminate_sequence = True
-                                break
-                            for triple in triples:
-                                triple_to_doc[len(triple_to_doc)] = {
-                                    "triple": triple,
-                                    "doc_id": i + 1,
-                                }
-                            triples_list.extend(triples)
-                            _req.add_user_message(self.processing_class, f'Extracts for Document{i+1}: {doc}')
-                            _req.add_assistant_message(self.processing_class, content)
+                        triples_list.extend(triples)
+                        _req.interaction_kwargs["processed_docs"] = processed_docs + [document_list[0]]
+                        _req.interaction_kwargs["remaining_context"] = document_list[1:] if len(document_list) > 1 else []
                         # save results back into kwargs
                         _req.interaction_kwargs["title_triple_dict"] = triple_to_doc
                         _req.interaction_kwargs["triples_list"] = triples_list
+                        # print(document_list)
+                        # print(triple_to_doc)
+                messages = [{"role": x.role, "content": x.content} for x in _req.messages]
                 should_terminate_sequence, content, reward, metrics = await interaction.generate_response(
-                    _req.request_id, messages, 
-                    current_turn = user_turns, 
-                    max_user_turn = self.config.multi_turn.max_user_turns,
+                    _req.request_id, messages,
+                    current_turn=user_turns,
+                    max_user_turn=self.config.multi_turn.max_user_turns,
+                    iterative=self.iterative,
                     **_req.interaction_kwargs
                 )
                 is_rag = interaction._instance_dict[_req.request_id]["rag_state"]
