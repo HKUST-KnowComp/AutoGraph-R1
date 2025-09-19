@@ -350,6 +350,7 @@ class SGLangRollout(BaseRollout):
         config_parser.read("verl/third_party/autograph_r1/config.ini")
         
         self.use_api = self.config.get("use_api", False)
+        self.tight = self.config.get("tight", False)
         self.use_local_actor_for_rag = False
         if self.use_api:
             # Model checking
@@ -1129,7 +1130,7 @@ class SGLangRollout(BaseRollout):
                         _req.interaction_kwargs["title_triple_dict"] = triple_to_doc
                         _req.interaction_kwargs["triples_list"] = triples_list
                     
-                if self.text_linking and rag_state == AutoGraphStateEnum.CONSTRUCTING and self.iterative:
+                if rag_state == AutoGraphStateEnum.CONSTRUCTING and self.iterative:
                     # create the triples to link the title and text
                     should_terminate_sequence = False
                     for i in range(len(messages) - 1, -1, -1):
@@ -1876,6 +1877,8 @@ class SGLangRollout(BaseRollout):
         
         if self.rag_method == "subgraph":
             has_error = False
+            if self.iterative:
+                triples_string = json.dumps(_req.interaction_kwargs.get("triples_list", ""))
             try:
                 kg = parse_triples(triples_string)
                 if kg.number_of_edges() == 0:
@@ -1888,11 +1891,43 @@ class SGLangRollout(BaseRollout):
             if not has_error:
                 from autograph.rag_server.subgraph_retriever import SubgraphRetriever
                 retriever = SubgraphRetriever(self.retriever_config, self.llm_generator, self.reranker)
+                num_hop = len(_req.interaction_kwargs.get('supporting_context', []))
+                if num_hop == 0:
+                    num_hop = 4
+                # retriever.num_hop = 3
                 answer = await retriever.retrieve(
                     question=question,
                     kg=kg,
                     sampling_params=api_sampling_params,
                     sub_queries=decomposed_queries,
+                    answer=_req.interaction_kwargs.get("ground_truth")[0]
+                )
+                output_text = answer
+        elif self.rag_method == "tog":
+            has_error = False
+            if self.iterative:
+                triples_string = json.dumps(_req.interaction_kwargs.get("triples_list", ""))
+            try:
+                kg = parse_triples(triples_string)
+                if kg.number_of_edges() == 0:
+                    output_text = "Error: No valid triples found"
+                    has_error = True
+            except Exception as e:
+                output_text = "Error parsing triples"
+                has_error = True
+            
+            if not has_error:
+                from autograph.rag_server.tog_v3 import TogV3Retriever
+                retriever = TogV3Retriever(self.retriever_config, self.llm_generator, self.reranker)
+                num_hop = len(_req.interaction_kwargs.get('supporting_context', []))
+                if num_hop == 0:
+                    num_hop = 4
+                answer = await retriever.retrieve(
+                    query=question,
+                    kg=kg,
+                    sampling_params=api_sampling_params,
+                    Dmax=num_hop,
+                    topN= num_hop,
                     answer=_req.interaction_kwargs.get("ground_truth")[0]
                 )
                 output_text = answer
@@ -1916,7 +1951,7 @@ class SGLangRollout(BaseRollout):
                     sampling_params=api_sampling_params,
                 )
                 output_text = answer
-        elif self.text_linking and self.rag_method == "hipporag":
+        elif self.text_linking and (self.rag_method == "hipporag" or self.rag_method == "hipporag2"):
             has_error = False
             title_triple_dict = _req.interaction_kwargs["title_triple_dict"]
             document_list = _req.interaction_kwargs.get("full_context", [])
@@ -1930,16 +1965,24 @@ class SGLangRollout(BaseRollout):
                 output_text = "Error parsing triples"
                 has_error = True
             if not has_error:
-                from autograph.rag_server.hipporag2 import HippoRAG2Retriever
-                retriever = HippoRAG2Retriever(self.retriever_config, self.llm_generator, self.reranker)
+                if self.rag_method == "hipporag":
+                    from autograph.rag_server.hipporag1 import HippoRAGRetriever
+                    retriever = HippoRAGRetriever(self.retriever_config, self.llm_generator, self.reranker)
+                elif self.rag_method == "hipporag2":
+                    from autograph.rag_server.hipporag2 import HippoRAG2Retriever
+                    retriever = HippoRAG2Retriever(self.retriever_config, self.llm_generator, self.reranker)
                 supporting_context = _req.interaction_kwargs.get("supporting_context")
                 full_context = _req.interaction_kwargs.get("full_context")
+                top_n_passages = len(supporting_context) if supporting_context is not None else 5
+                if not self.tight:
+                    top_n_passages = 5
                 answer = await retriever.retrieve(
                     question=question,
                     kg=kg,
                     sampling_params=api_sampling_params,
                     supporting_context=supporting_context,
                     full_context=full_context,
+                    top_n_passages=top_n_passages,
                 )
                 output_text = answer
 

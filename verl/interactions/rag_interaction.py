@@ -88,6 +88,7 @@ class RAGInteraction(BaseInteraction):
                         document = remaining_context[0]
                         response = f"Extracts for {document}"
                     else:
+                        assert len(kwargs['processed_docs']) == len(kwargs['full_context'])
                         response = "You will perform graph based RAG based on your constructed knowledge graph."
                         self._instance_dict[instance_id]["rag_state"] = True
                     reward = 1.0

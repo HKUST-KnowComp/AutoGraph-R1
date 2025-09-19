@@ -64,48 +64,6 @@ class TogRetriever(BaseRetriever):
             return {}
         return pruned_entities
 
-    async def relation_prune_combination(self, query, entities_relation: dict):
-        # only prompt with entities with number of relations larger than self.config.width
-        # For those that are less than self.config.width, we keep all relations
-        entities_relation_less = {entity: relations for entity, relations in entities_relation.items() if len(relations) <= self.config.width}
-        entities_relation_more = {entity: relations for entity, relations in entities_relation.items() if len(relations) > self.config.width}
-
-        # Step 1: Prepare the prompt for the LLM
-        entities_prompt = "\n".join(
-            [
-                f'Entity: "{entity}"\nAvailable Relations: {relations}'
-                for entity, relations in entities_relation_more.items()
-            ]
-        )
-        analysis_prompt = RELATION_PRUNE_PROMPT % (self.config.width, self.config.width) + f"\nQuestion: {query}\n{entities_prompt}"
-
-        # Step 2: Generate the LLM response to analyze and prune the relations
-        messages = [
-            {
-                "role": "system",
-                "content": "You are a reasoning assistant tasked with pruning relations for entities in a knowledge graph query. Provide a JSON-formatted output containing the most relevant relations for each entity."
-            },
-            {
-                "role": "user",
-                "content": analysis_prompt
-            }
-        ]
-
-        response = await self.llm_generator.generate_response(messages, temperature=self.config.temperature_exploration)
-
-        # Step 3: Parse the response to ensure it is a valid JSON dictionary
-        try:
-            pruned_relations = json_repair.loads(response)
-            if not isinstance(pruned_relations, list):
-                return entities_relation
-            # combine the pruned relations with those that were less than self.config.width
-            if not all("entity" in item and "relations" in item for item in pruned_relations):
-                return entities_relation
-            return {item["entity"]: item["relations"] for item in pruned_relations if "entity" in item and "relations" in item} | entities_relation_less
-        except Exception as e:
-            print(f"Error parsing relation prune response: {e}")
-            return entities_relation
-
     async def retrieve_topk_nodes(self, query):
         # Step 1: Extract topic entities using the ner method
         entities_json = await self.ner(query)

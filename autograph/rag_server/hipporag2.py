@@ -52,10 +52,6 @@ class HippoRAG2Retriever(BaseRetriever):
 
     async def index_kg(self, batch_size:int = 100):
         nodes = self.node_list
-        node_embeddings = []
-        for node_batch in batch(nodes, batch_size):
-            node_embeddings.extend(await self.reranker.embed(node_batch))
-        self.node_embeddings = np.array(node_embeddings)
 
         # Batched triple embeddings
         triples = [f"{src} {rel} {dst}" for src, dst, rel in self.entity_KG.edges(data="relation")]
@@ -122,6 +118,7 @@ class HippoRAG2Retriever(BaseRetriever):
         self.text_list = []
         self.node_list = []
         self.KG = kg
+        top_n_passages = kwargs.get("top_n_passages", self.config.topN_passages)
 
         for node, attrs in kg.nodes(data=True):
             if attrs.get("node_type") == "text":
@@ -129,7 +126,6 @@ class HippoRAG2Retriever(BaseRetriever):
             else:
                 self.node_list.append(node)
 
-        self.entity_KG = kg.subgraph(self.node_list)
         self.edge_list = list(self.entity_KG.edges(data="relation"))
         self.sampling_params = sampling_params
 
@@ -147,63 +143,48 @@ class HippoRAG2Retriever(BaseRetriever):
         # personalization_dict.update(text_dict)
         # retrieve the top N passages
 
-        pr = nx.pagerank(self.entity_KG, personalization=personalization_dict)
+        pr = nx.pagerank(self.KG, personalization=personalization_dict)
         # print("Personalization dict after pagerank:", pr)
         # get the top N passages based on the text_id list and pagerank score
         text_dict_score = {}
-        for node in self.entity_KG.nodes():
+        for node in pr:
             try:
-                if node in pr:
-                    # Find text nodes connected to this entity node with "source" relation
-                    text_neighbors = []
-                    for neighbor in self.KG.neighbors(node):
-                        # Check if this is a text node connected by "source" relation
-                        edge_data = self.KG.get_edge_data(node, neighbor)
-                        if (edge_data and edge_data.get('relation') == 'source' and 
-                            self.KG.nodes[neighbor].get('node_type') == 'text'):
-                            text_neighbors.append(neighbor)
-                    
-                    # If we found text neighbors, add them to the text_dict_score
-                    for text_node in text_neighbors:
-                        if text_node not in text_dict_score:
-                            text_dict_score[text_node] = pr[node]
-                        else:
-                            # If a text node is connected to multiple entities, take the max score
-                            text_dict_score[text_node] += pr[node]
+                if node in self.text_list:
+                    text_dict_score[node] = pr[node]
             except Exception as e:
                 print(f"Error processing node {node}: {str(e)}")
 
         # return topN passages
         sorted_passages = sorted(text_dict_score.items(), key=lambda x: x[1], reverse=True)
-        sorted_passages = sorted_passages[:self.config.topN_passages]
+        sorted_passages = sorted_passages[:top_n_passages]
         sorted_passages = [passage_value_pairs[0] for passage_value_pairs in sorted_passages]
         
         precision = await self.calculate_precision_reward(sorted_passages, self.supporting_context)
         recall = await self.calculate_recall_reward(sorted_passages, self.supporting_context)
 
         # generate answer
-        context = "\n".join(sorted_passages)
-        prompt = ANSWER_GENERATION_PROMPT
-        messages = [
-            {"role": "system", "content": prompt},
-        ]
-        self.sampling_params["temperature"] = self.config.temperature_reasoning
-        messages.append({"role": "user", "content": f"{context}\n\n{question}"})
+        # context = "\n".join(sorted_passages)
+        # prompt = ANSWER_GENERATION_PROMPT
+        # messages = [
+        #     {"role": "system", "content": prompt},
+        # ]
+        # self.sampling_params["temperature"] = self.config.temperature_reasoning
+        # messages.append({"role": "user", "content": f"{context}\n\n{question}"})
 
-        generated_text = await self.llm_generator.generate_response(messages, **self.sampling_params)
-        if "Answer:" in generated_text:
-            generated_text = generated_text.split("Answer:")[-1]
-        elif "answer:" in generated_text:
-            generated_text = generated_text.split("answer:")[-1]
-        # if answer is none
-        if not generated_text:
-            return json.dumps({
-                "answer": "none",
-                "precision": precision,
-                "recall": recall
-            })
+        # generated_text = await self.llm_generator.generate_response(messages, **self.sampling_params)
+        # if "Answer:" in generated_text:
+        #     generated_text = generated_text.split("Answer:")[-1]
+        # elif "answer:" in generated_text:
+        #     generated_text = generated_text.split("answer:")[-1]
+        # # if answer is none
+        # if not generated_text:
+        #     return json.dumps({
+        #         "answer": "none",
+        #         "precision": precision,
+        #         "recall": recall
+        #     })
         return json.dumps({
-            "answer": generated_text,
+            "answer": "dummy answer",
             "precision": precision,
             "recall": recall
         })

@@ -40,7 +40,10 @@ class SubgraphRetriever(BaseRetriever):
             }
         ]
         response = await self.llm_generator.generate_response(messages, **self.sampling_params)
-        entities_json = json_repair.loads(response)
+        try:
+            entities_json = json_repair.loads(response)
+        except Exception as e:
+            return {}
         if "entities" not in entities_json or not isinstance(entities_json["entities"], list):
             return {}
         return entities_json
@@ -73,14 +76,31 @@ class SubgraphRetriever(BaseRetriever):
 
     async def retrieve_topk_nodes(self, query):
         """Retrieve top-k nodes relevant to the query, with fallback to similar nodes."""
+        is_query_only = False
         entities_json = await self.ner(query)
         entities = entities_json.get("entities", [])
         if not entities:
             entities = [query]
+            is_query_only = True
         topk_nodes = []
         entities_not_in_kg = []
-        entities = [str(e) for e in entities]
-        entities = list(set(entities))  # deduplicate
+        if is_query_only:
+            def search_entity_in_kg_instruct(entity: str) -> str:
+                task = "Given a question, retrieve the most relevant knowledge graph nodes."
+                return f"Instruct: {task}\nQuestion: {entity}"
+            entity_texts = [search_entity_in_kg_instruct(e) for e in entities]
+            entity_embeddings = await self.reranker.embed(entity_texts)
+            sim_scores = entity_embeddings @ self.node_embeddings.T
+            indices = np.argsort(sim_scores, axis=1)[:, -self.num_hop:]  # Get the last k indices after sorting
+            entities = []
+            for i in range(indices.shape[0]):
+                for j in indices[i]:
+                    top_node = list(self.KG.nodes)[j]
+                    entities.append(top_node)
+            entities = list(set(entities))  # deduplicate
+        else:
+            entities = [str(e) for e in entities]
+            entities = list(set(entities))  # deduplicate
         for entity in entities:
             if entity in self.KG.nodes:
                 topk_nodes.append(entity)
