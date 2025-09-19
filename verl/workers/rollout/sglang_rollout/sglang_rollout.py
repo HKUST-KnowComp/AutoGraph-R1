@@ -1893,8 +1893,10 @@ class SGLangRollout(BaseRollout):
                 retriever = SubgraphRetriever(self.retriever_config, self.llm_generator, self.reranker)
                 num_hop = len(_req.interaction_kwargs.get('supporting_context', []))
                 if num_hop == 0:
-                    num_hop = 4
-                # retriever.num_hop = 3
+                    num_hop = 3
+                if not self.tight:
+                    num_hop = 3
+                retriever.num_hop = num_hop
                 answer = await retriever.retrieve(
                     question=question,
                     kg=kg,
