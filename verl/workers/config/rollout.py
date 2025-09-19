@@ -169,7 +169,7 @@ class RolloutConfig(BaseConfig):
     # AutoGraph Config
     api_domain:str ='rag_server' 
     use_api:bool =True 
-    rag_method:str = 'subgraph' # available: 'subgraph', 'hipporag', 'hipporag2', 'edge', 'tog'
+    rag_method:str = 'hipporag' # available: 'subgraph', 'hipporag', 'hipporag2', 'edge', 'tog'
     text_linking:bool= False
     freeze_answer_api:bool = False
     iterative:bool = True

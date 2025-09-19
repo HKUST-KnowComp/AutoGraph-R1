@@ -65,7 +65,7 @@ fi
 
 TIMESTAMP=$(date +"%Y%m%d_%H%M%S")
 
-CHECKPOINT_DIR="/data/autograph/checkpoints/${TIMESTAMP}_qwen2.5-3B-autograph-distract_${DIFFFICULTY}-docsize${DOC_SIZE}-textlinking${TEXT_LINKING}-f1${F1_REWARD}_loose"
+CHECKPOINT_DIR="/data/autograph/checkpoints/${TIMESTAMP}_qwen2.5-3B-autograph-${DIFFFICULTY}-docsize${DOC_SIZE}-textlinking${TEXT_LINKING}-loose"
 
 if [ "$TEXT_LINKING" = "True" ]; then
     reward_fn_file_path="verl/third_party/autograph_r1/recall_reward.py"

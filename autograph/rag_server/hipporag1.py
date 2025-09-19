@@ -104,7 +104,7 @@ class HippoRAGRetriever(BaseRetriever):
             else:
                 entities_not_in_kg.append(entity)
         if entities_not_in_kg:
-            kg_nodes = list(self.KG.nodes)
+            kg_nodes = list(self.entity_KG.nodes)
             sim_scores = await self.reranker.compute_similarity(entities_not_in_kg, kg_nodes)
             indices = np.argsort(sim_scores, axis=1)[:, -1:]  # Get the last k indices after sorting
     
