@@ -1,0 +1,14 @@
+{
+    "triple_extraction": {
+        "type": "array",
+        "items": {
+            "type": "object",
+            "properties": {
+                "subject": { "type": "string" },
+                "relation": { "type": "string" },
+                "object": { "type": "string" }
+            },
+            "required": ["subject", "relation", "object"]
+        }
+    }
+}
