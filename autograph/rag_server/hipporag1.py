@@ -99,7 +99,7 @@ class HippoRAGRetriever(BaseRetriever):
         entities = [str(e) for e in entities]
         entities = list(set(entities))  # deduplicate
         for entity in entities:
-            if entity in self.KG.nodes:
+            if entity in self.entity_KG.nodes:
                 topk_nodes.append(entity)
             else:
                 entities_not_in_kg.append(entity)
@@ -173,7 +173,7 @@ class HippoRAGRetriever(BaseRetriever):
         text_dict_score = {}
         for node in pr:
             try:
-                if node in list(self.entity_KG.nodes) and self.KG.nodes[node].get("node_type") == "entity":
+                if node in self.node_list and self.KG.nodes[node].get("node_type") == "entity":
                     # Find text nodes connected to this entity node with "source" relation
                     text_neighbors = self.node_to_text_neighbors.get(node, [])
                     

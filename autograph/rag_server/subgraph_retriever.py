@@ -172,7 +172,8 @@ class SubgraphRetriever(BaseRetriever):
             subgraph = await self.construct_subgraph(question, initial_nodes)
 
         # Generate answer using the subgraph (or full KG)
-        answer = await self.deduce_answer(question, subgraph, self.answer)
+        # answer = await self.deduce_answer(question, subgraph, self.answer)
+        answer = await self.generate_answer(question, subgraph)
 
         total_edges = len(self.KG.edges)
         subgraph_edges = len(subgraph.edges)

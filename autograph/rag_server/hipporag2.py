@@ -125,7 +125,7 @@ class HippoRAG2Retriever(BaseRetriever):
                 self.text_list.append(node)
             else:
                 self.node_list.append(node)
-
+        self.entity_KG = kg.subgraph(self.node_list)
         self.edge_list = list(self.entity_KG.edges(data="relation"))
         self.sampling_params = sampling_params
 

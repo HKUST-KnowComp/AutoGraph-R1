@@ -1973,6 +1973,8 @@ class SGLangRollout(BaseRollout):
                 elif self.rag_method == "hipporag2":
                     from autograph.rag_server.hipporag2 import HippoRAG2Retriever
                     retriever = HippoRAG2Retriever(self.retriever_config, self.llm_generator, self.reranker)
+                else:
+                    raise ValueError("Invalid rag_method for text_linking")
                 supporting_context = _req.interaction_kwargs.get("supporting_context")
                 full_context = _req.interaction_kwargs.get("full_context")
                 top_n_passages = len(supporting_context) if supporting_context is not None else 5
