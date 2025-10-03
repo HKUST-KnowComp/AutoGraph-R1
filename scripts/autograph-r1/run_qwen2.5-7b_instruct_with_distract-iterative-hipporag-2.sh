@@ -34,7 +34,7 @@ CONFIG_PATH="$PROJECT_DIR/config"
 
 # AutoGraph parameters
 DIFFFICULTY="easy" # available: easy, medium
-DOC_SIZE=8 # available: 8,12,15
+DOC_SIZE=15 # available: 8,12,15
 WITH_DISTRACT="True" # Only True is supported now
 TEXT_LINKING="True" # available: True, False
 F1_REWARD="False" # available: True, False

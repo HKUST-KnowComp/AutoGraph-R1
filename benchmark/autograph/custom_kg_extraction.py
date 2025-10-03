@@ -7,7 +7,7 @@ import argparse
 parser = argparse.ArgumentParser(description="Custom KG Extraction")
 parser.add_argument("--model_name", type=str, default="Qwen/Qwen2.5-3B-Instruct", help="Keyword for extraction")
 args = parser.parse_args()
-keywords = ["2wikimultihopqa","musique", "hotpotqa"]
+keywords = ["2wikimultihopqa","musique", "hotpotqa", "2021wiki"]
 # keywords = ["2021wiki"]
 for keyword in keywords:
       model_name = args.model_name

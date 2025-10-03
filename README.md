@@ -1,292 +1,122 @@
-# autograph-r1
-TODO: Process natural question to construct a better dataset
+# AutoGraph-R1
 
+**AutoGraph-R1** is a framework for constructing and leveraging knowledge graphs (KGs) for advanced retrieval-augmented generation (RAG). It consists of two main stages:
 
+1. **Graph Constructor Training Stage**: Trains a model to build knowledge graphs from text corpora.
+2. **Inference Stage**: Uses the trained model to construct KGs and perform RAG benchmarking.
 
+This README provides step-by-step instructions to set up the environment, install dependencies, and run both stages.
 
-## Slurm
-submit a job: 
-sbatch submit_slurm.sh
- 
-for checking usage:
-squota_msc
+## Project Overview
 
-squeue -u httsangaj
+AutoGraph-R1 is the first framework to optimize knowledge graph (KG) construction for retrieval-augmented generation (RAG) using Reinforcement Learning (RL). It addresses the disconnect between KG construction and its downstream application by training a large language model (LLM) constructor to generate graphs that maximize task performance. By framing graph generation as a policy learning problem, AutoGraph-R1 uses novel task-aware reward functions—one for graphs as knowledge carriers and another as knowledge indices—to ensure the graphs are demonstrably useful for question answering (QA) tasks. For a detailed overview, refer to the project diagram:
 
-scontrol show job <your job id>
+![AutoGraph-R1 Overview](image/autograph-r1.png)
 
-## For accessing with gpu
-srun --account=awskgraph      --partition=normal      --nodes=1      --ntasks-per-node=1  --gpus-per-node=1  --cpus-per-task=28      --container-writable      --container-remap-root      --no-container-mount-home   --container-mounts /home/httsangaj/project/autograph-r1:/workspace/autograph-r1   --container-image /project/awskgraph/VeRL/verl.sqsh      --container-save /project/awskgraph/VeRL/verl.sqsh      --pty bash 
+## Prerequisites
 
+Before setting up the environment, ensure you have the following:
 
-## CPU7 environment
+- **Hardware**: A machine with a CUDA-compatible GPU. (For AMD or Ascend gpu, please refer to VeRL documentation)
+- **Software**:
+  - Python 3.9 or higher
+  - CUDA drivers compatible with your GPU
+  - Git for cloning repositories
 
-Package                                  Version       Editable project location
----------------------------------------- ------------- -------------------------------------------
-accelerate                               1.8.1
-aiohappyeyeballs                         2.6.1
-aiohttp                                  3.12.13
-aiohttp-cors                             0.8.1
-aiosignal                                1.4.0
-airportsdata                             20250706
-annotated-types                          0.7.0
-anthropic                                0.57.1
-antlr4-python3-runtime                   4.9.3
-anyio                                    4.9.0
-apex                                     0.1
-astor                                    0.8.1
-asttokens                                3.0.0
-async-timeout                            5.0.1
-attrs                                    25.3.0
-av                                       15.0.0
-blake3                                   1.0.5
-blinker                                  1.9.0
-blobfile                                 3.0.0
-cachetools                               5.5.2
-certifi                                  2025.7.9
-cffi                                     1.17.1
-cfgv                                     3.4.0
-charset-normalizer                       3.4.2
-click                                    8.2.1
-cloudpickle                              3.1.1
-codetiming                               1.4.0
-coloredlogs                              15.0.1
-colorful                                 0.5.7
-compressed-tensors                       0.9.3
-cuda-bindings                            12.9.0
-cuda-python                              12.9.0
-cupy-cuda12x                             13.4.1
-Cython                                   3.1.2
-datasets                                 3.6.0
-decorator                                5.2.1
-decord                                   0.6.0
-Deprecated                               1.2.18
-depyf                                    0.18.0
-dill                                     0.3.8
-diskcache                                5.6.3
-distlib                                  0.3.9
-distro                                   1.9.0
-dnspython                                2.7.0
-einops                                   0.8.1
-email_validator                          2.2.0
-exceptiongroup                           1.3.0
-executing                                2.2.0
-faiss                                    1.11.0
-fastapi                                  0.116.0
-fastapi-cli                              0.0.8
-fastapi-cloud-cli                        0.1.2
-fastrlock                                0.8.3
-filelock                                 3.18.0
-flash_attn                               2.7.4.post1
-flashinfer-python                        0.2.5
-Flask                                    3.1.1
-flatbuffers                              25.2.10
-frozenlist                               1.7.0
-fsspec                                   2024.6.1
-gguf                                     0.17.1
-gitdb                                    4.0.12
-GitPython                                3.1.44
-google-api-core                          2.25.1
-google-auth                              2.40.3
-googleapis-common-protos                 1.70.0
-grpcio                                   1.73.1
-h11                                      0.16.0
-hf_transfer                              0.1.9
-hf-xet                                   1.1.5
-httpcore                                 1.0.9
-httptools                                0.6.4
-httpx                                    0.28.1
-huggingface-hub                          0.33.2
-humanfriendly                            10.0
-hydra-core                               1.3.2
-identify                                 2.6.12
-idna                                     3.10
-importlib_metadata                       8.0.0
-iniconfig                                2.1.0
-interegular                              0.3.3
-ipython                                  8.37.0
-itsdangerous                             2.2.0
-jedi                                     0.19.2
-Jinja2                                   3.1.6
-jiter                                    0.10.0
-joblib                                   1.5.1
-json_repair                              0.48.0
-jsonschema                               4.24.0
-jsonschema-specifications                2025.4.1
-lark                                     1.2.2
-liger_kernel                             0.5.10
-litellm                                  1.74.0.post1
-llguidance                               0.7.30
-llvmlite                                 0.44.0
-lm-format-enforcer                       0.10.11
-lxml                                     6.0.0
-markdown-it-py                           3.0.0
-MarkupSafe                               2.1.5
-mathruler                                0.1.0
-matplotlib-inline                        0.1.7
-mdurl                                    0.1.2
-mistral_common                           1.6.3
-modelscope                               1.27.1
-mpmath                                   1.3.0
-msgpack                                  1.1.1
-msgspec                                  0.19.0
-multidict                                6.6.3
-multiprocess                             0.70.16
-nanobind                                 2.7.0
-nest-asyncio                             1.6.0
-networkx                                 3.3
-ninja                                    1.11.1.4
-nodeenv                                  1.9.1
-numba                                    0.61.2
-numpy                                    1.26.4
-nvidia-cublas-cu12                       12.4.5.8
-nvidia-cuda-cupti-cu12                   12.4.127
-nvidia-cuda-nvrtc-cu12                   12.4.127
-nvidia-cuda-runtime-cu12                 12.4.127
-nvidia-cudnn-cu12                        9.1.0.70
-nvidia-cufft-cu12                        11.2.1.3
-nvidia-curand-cu12                       10.3.5.147
-nvidia-cusolver-cu12                     11.6.1.9
-nvidia-cusparse-cu12                     12.3.1.170
-nvidia-cusparselt-cu12                   0.6.2
-nvidia-ml-py                             12.575.51
-nvidia-nccl-cu12                         2.21.5
-nvidia-nvjitlink-cu12                    12.4.127
-nvidia-nvtx-cu12                         12.4.127
-omegaconf                                2.3.0
-onnxruntime                              1.22.0
-openai                                   1.93.2
-opencensus                               0.11.4
-opencensus-context                       0.1.3
-opencv-fixer                             0.2.5
-opencv-python                            4.12.0.88
-opencv-python-headless                   4.12.0.88
-opentelemetry-api                        1.34.1
-opentelemetry-exporter-otlp              1.26.0
-opentelemetry-exporter-otlp-proto-common 1.26.0
-opentelemetry-exporter-otlp-proto-grpc   1.26.0
-opentelemetry-exporter-otlp-proto-http   1.26.0
-opentelemetry-exporter-prometheus        0.55b1
-opentelemetry-proto                      1.26.0
-opentelemetry-sdk                        1.34.1
-opentelemetry-semantic-conventions       0.55b1
-opentelemetry-semantic-conventions-ai    0.4.10
-optree                                   0.16.0
-orjson                                   3.10.18
-outlines                                 0.1.11
-outlines_core                            0.1.26
-packaging                                25.0
-pandas                                   2.3.1
-parso                                    0.8.4
-partial-json-parser                      0.2.1.1.post6
-peft                                     0.16.0
-pexpect                                  4.9.0
-pillow                                   11.0.0
-pip                                      25.1
-platformdirs                             4.3.8
-pluggy                                   1.6.0
-pre_commit                               4.2.0
-prometheus_client                        0.22.1
-prometheus-fastapi-instrumentator        7.1.0
-prompt_toolkit                           3.0.51
-propcache                                0.3.2
-proto-plus                               1.26.1
-protobuf                                 4.25.8
-psutil                                   7.0.0
-ptyprocess                               0.7.0
-pure_eval                                0.2.3
-py-cpuinfo                               9.0.0
-py-spy                                   0.4.0
-pyarrow                                  20.0.0
-pyasn1                                   0.6.1
-pyasn1_modules                           0.4.2
-pybind11                                 2.13.6
-pycountry                                24.6.1
-pycparser                                2.22
-pycryptodomex                            3.23.0
-pydantic                                 2.11.7
-pydantic_core                            2.33.2
-pyext                                    0.7
-Pygments                                 2.19.2
-pyjnius                                  1.6.1
-pylatexenc                               2.10
-pynvml                                   12.0.0
-pyserini                                 1.1.0
-pytest                                   8.4.1
-python-dateutil                          2.9.0.post0
-python-dotenv                            1.1.1
-python-json-logger                       3.3.0
-python-multipart                         0.0.20
-pytz                                     2025.2
-PyYAML                                   6.0.2
-pyzmq                                    27.0.0
-qwen-vl-utils                            0.0.11
-ray                                      2.47.1
-referencing                              0.36.2
-regex                                    2024.11.6
-requests                                 2.32.4
-rich                                     14.0.0
-rich-toolkit                             0.14.8
-rignore                                  0.5.1
-rpds-py                                  0.26.0
-rsa                                      4.9.1
-ruff                                     0.12.2
-safetensors                              0.5.3
-scikit-learn                             1.7.0
-scipy                                    1.15.3
-sentencepiece                            0.2.0
-sentry-sdk                               2.32.0
-setproctitle                             1.3.6
-setuptools                               78.1.1
-sgl-kernel                               0.1.4
-sglang                                   0.4.6.post5
-shellingham                              1.5.4
-six                                      1.17.0
-smart_open                               7.3.0.post1
-smmap                                    5.0.2
-sniffio                                  1.3.1
-soundfile                                0.13.1
-stack-data                               0.6.3
-starlette                                0.46.2
-sympy                                    1.13.1
-tenacity                                 9.1.2
-tensordict                               0.6.2
-threadpoolctl                            3.6.0
-tiktoken                                 0.9.0
-tokenizers                               0.21.2
-tomli                                    2.2.1
-torch                                    2.6.0+cu124
-torch_memory_saver                       0.0.8
-torchao                                  0.9.0
-torchaudio                               2.6.0+cu124
-torchdata                                0.11.0
-torchvision                              0.21.0+cu124
-tqdm                                     4.67.1
-traitlets                                5.14.3
-transformers                             4.51.1
-triton                                   3.2.0
-typer                                    0.16.0
-typing_extensions                        4.12.2
-typing-inspection                        0.4.1
-tzdata                                   2025.2
-urllib3                                  2.5.0
-uvicorn                                  0.35.0
-uvloop                                   0.21.0
-verl                                     0.4.1.dev0    /home/httsangaj/projects/atlas-rl-dirs/verl
-virtualenv                               20.31.2
-vllm                                     0.8.5.post1
-wandb                                    0.21.0
-watchfiles                               1.1.0
-wcwidth                                  0.2.13
-websockets                               15.0.1
-Werkzeug                                 3.1.3
-wheel                                    0.45.1
-wrapt                                    1.17.2
-xformers                                 0.0.29.post2
-xgrammar                                 0.1.19
-xxhash                                   3.5.0
-yarl                                     1.20.1
-zipp                                     3.23.0
+## Setup Instructions
 
+### 1. Environment Setup for Graph Constructor Training
 
+The training stage requires setting up a CUDA environment and installing VeRL, PyTorch, and Transformers.
 
+#### Step 1: Install CUDA
+- Install the appropriate CUDA version for your GPU (Refer to VeRL for supported CUDA version). Refer to the [NVIDIA CUDA Toolkit documentation](https://developer.nvidia.com/cuda-downloads) for installation instructions.
+- Verify the installation:
+  ```bash
+  nvcc --version
+  ```
+
+#### Step 2: Install VeRL
+VeRL is used for the agent loop in the training stage. Follow these steps:
+
+- Install VeRL according to your CUDA version. Refer to the [VeRL installation guide](https://verl.readthedocs.io/en/v0.5.x/start/install.html#install-from-custom-environment).
+- For detailed instructions on setting up VeRL for the agent loop, see this [tutorial](https://github.com/zhaochenyang20/Awesome-ML-SYS-Tutorial/blob/703711904b3f69a187068916b29264c310f056cc/rlhf/verl/multi-turn/tool_examples/agent_loop.md) (This tutorial is written in chinese).
+
+#### Step 3: Install PyTorch and Transformers
+If you find the installed pytorch and transformers is not supporting your CUDA version you can reinstall PyTorch and the Transformers library in your Python environment
+- For PyTorch, our testing environment is v2.7.1+cu12.6 [install link](https://pytorch.org/get-started/previous-versions/)
+- For Transformers, it is 4.53.3
+
+Ensure the PyTorch version is compatible with your CUDA setup. Check compatibility at the [PyTorch website](https://pytorch.org/get-started/locally/).
+
+### 2. Environment Setup for Inference Stage
+
+The inference stage uses an additional package for RAG, [AutoSchemaKG](https://github.com/HKUST-KnowComp/AutoSchemaKG).
+
+#### Install Atlas-RAG
+In the same Python environment, install the `atlas-rag` package:
+
+```bash
+pip install atlas-rag
+```
+Our version used is >=v0.0.4.post2.
+
+## Running the Training Stage
+
+**Deploy Embedding Model**
+```bash
+bash scripts/vllm_serve/qwen3-0.6b-emb.sh
+```
+
+### For 3B model training
+For Graph Retriever
+```bash
+bash scripts/autograph-r1/run_qwen2.5-3b_instruct_graph.sh
+```
+
+For Graph-based Text Retriever
+```bash
+bash scripts/autograph-r1/run_qwen2.5-3b_instruct_with_distract-iterative-hipporag-2.sh
+```
+
+### For 7B model training
+For Graph Retriever
+```bash
+bash scripts/autograph-r1/run_qwen2.5-7b_instruct_graph.sh
+```
+
+For Graph-based Text Retriever
+```bash
+bash scripts/autograph-r1/run_qwen2.5-7b_instruct_with_distract-iterative-hipporag-2.sh
+```
+
+## Running the Inference Stage
+
+The inference stage involves two main tasks: constructing a knowledge graph (KG) using a fine-tuned language model and performing RAG benchmarking.
+
+### 1. Knowledge Graph Construction
+To construct a knowledge graph from a general corpus, run the following script:
+
+```bash
+python benchmark/autograph/custom_kg_extraction.py
+```
+
+- **Input**: Specify the input corpus in the script or via command-line arguments (refer to the script documentation for details).
+- **Output**: The script generates a knowledge graph stored in the specified output directory.
+
+### 2. RAG Benchmarking
+The benchmarking process evaluates two retrieval methods: graph-based and text-based.
+
+#### 2.1 Graph Retriever
+Run the graph retriever benchmark:
+
+```bash
+python benchmark/autograph/benchmarking_graph.py
+```
+
+#### 2.2 Graph-Based Text Retriever
+Run the text retriever benchmark:
+
+```bash
+python benchmark/autograph/benchmarking_text.py
+```
