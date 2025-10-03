@@ -1,0 +1,66 @@
+{
+  "os": "Linux-6.11.0-1018-azure-x86_64-with-glibc2.39",
+  "python": "CPython 3.12.3",
+  "startedAt": "2025-09-14T14:02:03.829169Z",
+  "args": [
+    "--node-ip-address=10.0.0.4",
+    "--node-manager-port=46385",
+    "--object-store-name=/tmp/ray/session_2025-09-14_14-01-05_043325_3786141/sockets/plasma_store",
+    "--raylet-name=/tmp/ray/session_2025-09-14_14-01-05_043325_3786141/sockets/raylet",
+    "--redis-address=None",
+    "--metrics-agent-port=55898",
+    "--logging-rotate-bytes=536870912",
+    "--logging-rotate-backup-count=5",
+    "--runtime-env-agent-port=49291",
+    "--gcs-address=10.0.0.4:60901",
+    "--session-name=session_2025-09-14_14-01-05_043325_3786141",
+    "--temp-dir=/tmp/ray",
+    "--webui=127.0.0.1:8265",
+    "--cluster-id=18f30ad5032429b6d35855c5d35a0531685f31c8f6061e1b9070ac76",
+    "--startup-token=80",
+    "--worker-launch-time-ms=1757858467420",
+    "--node-id=01fc2d7f44b5f85574f1934fe78d0fbc0b9eaaa91564d419f76dd1ed",
+    "--runtime-env-hash=-2054348966",
+    "--enable-resource-isolation=false"
+  ],
+  "program": "/data/verl-0.5/lib/python3.12/site-packages/ray/_private/workers/default_worker.py",
+  "git": {
+    "remote": "git@github.com:gzone0111/autograph-r1.git",
+    "commit": "b69c4fa924ee47d5451f0efff017fedfed42a049"
+  },
+  "email": "httsangaj@connect.ust.hk",
+  "root": "/home/knowcomp/projects/autograph-r1",
+  "host": "knowcomp-rl",
+  "executable": "/data/verl-0.5/bin/python3",
+  "cpu_count": 80,
+  "cpu_count_logical": 80,
+  "gpu": "NVIDIA H100 NVL",
+  "gpu_count": 2,
+  "disk": {
+    "/": {
+      "total": "30084825088",
+      "used": "18766786560"
+    }
+  },
+  "memory": {
+    "total": "676305809408"
+  },
+  "gpu_nvidia": [
+    {
+      "name": "NVIDIA H100 NVL",
+      "memoryTotal": "100485038080",
+      "cudaCores": 16896,
+      "architecture": "Hopper",
+      "uuid": "GPU-c9774f5d-ccc9-b330-8267-d7a2a134b475"
+    },
+    {
+      "name": "NVIDIA H100 NVL",
+      "memoryTotal": "100485038080",
+      "cudaCores": 16896,
+      "architecture": "Hopper",
+      "uuid": "GPU-03b002bb-bf61-5f5d-bf69-0e10f000c4fe"
+    }
+  ],
+  "cudaVersion": "12.9",
+  "writerId": "0tuc8hgjt0f3ry25e9g0alfw6sbrbe9w"
+}

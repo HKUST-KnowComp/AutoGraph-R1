@@ -1,0 +1,108 @@
+{
+  "os":  "Linux-6.8.0-65-generic-x86_64-with-glibc2.35",
+  "python":  "CPython 3.10.18",
+  "startedAt":  "2025-08-07T16:16:28.481540Z",
+  "args":  [
+    "--node-ip-address=192.168.10.102",
+    "--node-manager-port=44575",
+    "--object-store-name=/tmp/ray/session_2025-08-08_00-14-51_942563_5100/sockets/plasma_store",
+    "--raylet-name=/tmp/ray/session_2025-08-08_00-14-51_942563_5100/sockets/raylet",
+    "--redis-address=None",
+    "--metrics-agent-port=62696",
+    "--logging-rotate-bytes=536870912",
+    "--logging-rotate-backup-count=5",
+    "--runtime-env-agent-port=55782",
+    "--gcs-address=192.168.10.102:59302",
+    "--session-name=session_2025-08-08_00-14-51_942563_5100",
+    "--temp-dir=/tmp/ray",
+    "--webui=127.0.0.1:8265",
+    "--cluster-id=dbbfaad3f0450bf6bb78794bb0f600d21e413c3375cbb8e13b437418",
+    "--startup-token=192",
+    "--worker-launch-time-ms=1754583295437",
+    "--node-id=c8dce156f819a56958f4d89173dbb62a55ec5b30771f84020bec0d6f",
+    "--runtime-env-hash=-1624044036",
+    "--enable-resource-isolation=false"
+  ],
+  "program":  "/home/httsangaj/miniconda3/envs/atlas-rl/lib/python3.10/site-packages/ray/_private/workers/default_worker.py",
+  "git":  {
+    "remote":  "git@github.com:gzone0111/autograph-r1.git",
+    "commit":  "ff469b6332a031424188fc79fbf798266a1d3755"
+  },
+  "email":  "httsangaj@connect.ust.hk",
+  "root":  "/home/httsangaj/projects/atlas-rl-dirs/autograph-r1",
+  "host":  "songcpu7",
+  "executable":  "/home/httsangaj/miniconda3/envs/atlas-rl/bin/python3",
+  "cpu_count":  96,
+  "cpu_count_logical":  192,
+  "gpu":  "NVIDIA L20",
+  "gpu_count":  8,
+  "disk":  {
+    "/":  {
+      "total":  "943412031488",
+      "used":  "502128340992"
+    }
+  },
+  "memory":  {
+    "total":  "1081972723712"
+  },
+  "gpu_nvidia":  [
+    {
+      "name":  "NVIDIA L20",
+      "memoryTotal":  "48305799168",
+      "cudaCores":  11776,
+      "architecture":  "Ada",
+      "uuid":  "GPU-bcc6d970-9050-f912-2169-58ecda253b2e"
+    },
+    {
+      "name":  "NVIDIA L20",
+      "memoryTotal":  "48305799168",
+      "cudaCores":  11776,
+      "architecture":  "Ada",
+      "uuid":  "GPU-1cca740e-8ee6-c009-d053-b57c4e7d8ae8"
+    },
+    {
+      "name":  "NVIDIA L20",
+      "memoryTotal":  "48305799168",
+      "cudaCores":  11776,
+      "architecture":  "Ada",
+      "uuid":  "GPU-db452531-23dd-a755-4fdd-8938a97482b6"
+    },
+    {
+      "name":  "NVIDIA L20",
+      "memoryTotal":  "48305799168",
+      "cudaCores":  11776,
+      "architecture":  "Ada",
+      "uuid":  "GPU-54bf7be3-267c-02bf-3dd0-4edb220c17a5"
+    },
+    {
+      "name":  "NVIDIA L20",
+      "memoryTotal":  "48305799168",
+      "cudaCores":  11776,
+      "architecture":  "Ada",
+      "uuid":  "GPU-6ab64c59-f25c-9ccc-1b25-93228f536cbd"
+    },
+    {
+      "name":  "NVIDIA L20",
+      "memoryTotal":  "48305799168",
+      "cudaCores":  11776,
+      "architecture":  "Ada",
+      "uuid":  "GPU-c7e9b483-97cd-3538-be61-7ac3814861a2"
+    },
+    {
+      "name":  "NVIDIA L20",
+      "memoryTotal":  "48305799168",
+      "cudaCores":  11776,
+      "architecture":  "Ada",
+      "uuid":  "GPU-c1687028-9023-b481-d57e-35d48d9cbe19"
+    },
+    {
+      "name":  "NVIDIA L20",
+      "memoryTotal":  "48305799168",
+      "cudaCores":  11776,
+      "architecture":  "Ada",
+      "uuid":  "GPU-79ebcfde-b083-5ea7-2b71-f46c051c3ea8"
+    }
+  ],
+  "cudaVersion":  "12.7",
+  "writerId":  "6b7zovqpoou7wl1rpr6ztsvau6boweuv"
+}

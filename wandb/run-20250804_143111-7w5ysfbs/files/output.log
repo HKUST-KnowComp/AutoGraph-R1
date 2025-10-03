@@ -1,0 +1,27 @@
+Checkpoint tracker file does not exist: /data/httsangaj/perplex-rl/checkpoints/20250804_142939_qwen2.5-7b-autograph/latest_checkpointed_iteration.txt
+Training from scratch
+Training Progress:   0%|          | 0/1 [00:00<?, ?it/s]
+Solution string: [
+    {"subject": "Arthur's Magazine", "relation": "was published as", "object": "an American literary periodical"},
+    {"subject": "Arthur's Magazine", "relation": "had starting year", "object": "1844"},
+    {"subject": "Arthur's Magazine", "relation": "had ending year", "object": "1846"},
+    {"subject": "Arthur's Magazine", "relation": "was published in", "object": "Philadelphia"},
+    {"subject": "Arthur's Magazine", "relation": "was edited by", "object": "T.S. Arthur"},
+    {"subject": "Arthur's Magazine", "relation": "featured work by", "object": "Edgar A. Poe"},
+    {"subject": "Arthur's Magazine", "relation": "featured work by", "object": "J.H. Ingraham"},
+    {"subject": "Arthur's Magazine", "relation": "featured work by", "object": "Sarah Josepha Hale"},
+    {"subject": "Arthur's Magazine", "relation": "featured work by", "object": "Thomas G. Spear"},
+    {"subject": "Arthur's Magazine", "relation": "was merged into", "object": "\"Godey's Lady's Book\""},
+    {"subject": "First for Women", "relation": "was published by", "object": "Bauer Media Group"},
+    {"subject": "First for Women", "relation": "was published in", "object": "USA"},
+    {"subject": "First for Women", "relation": "was started in", "object": "1989"},
+    {"subject": "First for Women", "relation": "is based in", "object": "Englewood Cliffs, New Jersey"},
+    {"subject": "First for Women", "relation": "circulation", "object": "1,310,696 copies"}
+]
+user
+You will perform graph based RAG based on your constructed knowledge graph.
+assistant
+{"answer": "Arthur's Magazine"}
+
+{'index': '0', 'interaction_kwargs': {'ground_truth': ["Arthur's Magazine"], 'name': 'graph_construction', 'question': "Which magazine was started first Arthur's Magazine or First for Women?"}, 'need_tools_kwargs': False, 'question': "Which magazine was started first Arthur's Magazine or First for Women?", 'split': 'train', 'num_turns': None}
+Extracted answer: Arthur's Magazine

@@ -1,0 +1,5 @@
+Checkpoint tracker file does not exist: /data/httsangaj/perplex-rl/checkpoints/20250804_143552_qwen2.5-7b-autograph/latest_checkpointed_iteration.txt
+Training from scratch
+Training Progress:   0%|          | 0/1 [00:00<?, ?it/s]
+Error extracting solution: Expecting value: line 1 column 1 (char 0)
+test_gen_batch meta info: {'eos_token_id': 151645, 'pad_token_id': 151643, 'recompute_log_prob': False, 'do_sample': False, 'validate': True}

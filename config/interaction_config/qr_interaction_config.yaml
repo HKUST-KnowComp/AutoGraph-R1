@@ -1,0 +1,7 @@
+interaction:
+  - name: "qr_interaction"
+    class_name: "verl.interactions.qr_interaction.QueryRewriteInteraction"
+    config: 
+      config_path: "verl/third_party/perplex_rl/config.ini"
+      backend: "vllm_reward"
+      api_model_name: "Qwen/Qwen2.5-7B-Instruct"

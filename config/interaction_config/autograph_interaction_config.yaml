@@ -1,0 +1,5 @@
+interaction:
+  - name: "graph_construction"
+    class_name: "verl.interactions.rag_interaction.RAGInteraction"
+    config: 
+      config_path: "verl/third_party/autograph_r1/config.ini"

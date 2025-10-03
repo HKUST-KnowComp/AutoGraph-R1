@@ -1,0 +1,1 @@
+The files implementation is intended to be used with verl initialized mode, not api model.
