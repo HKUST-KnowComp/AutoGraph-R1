@@ -2,7 +2,7 @@
 
 **Directly Optimizing Knowledge Graph Construction for RAG using Reinforcement Learning**
 
-[![Paper](https://img.shields.io/badge/paper-ARXIV_ID-B31B1B.svg)](https://arxiv.org/abs/YOUR_PAPER_ID)
+<!-- [![Paper](https://img.shields.io/badge/paper-ARXIV_ID-B31B1B.svg)](https://arxiv.org/abs/YOUR_PAPER_ID) -->
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 [![Python 3.10+](https://img.shields.io/badge/python-3.10+-blue.svg)](https://www.python.org/downloads/release/python-3100/)
 
