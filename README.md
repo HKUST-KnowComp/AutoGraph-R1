@@ -30,7 +30,7 @@ Before setting up the environment, ensure you have the following:
 The training stage requires setting up a CUDA environment and installing VeRL, PyTorch, and Transformers.
 
 #### Step 1: Install CUDA
-- Install the appropriate CUDA version for your GPU (Refer to VeRL for supported CUDA version). Refer to the [NVIDIA CUDA Toolkit documentation](https://developer.nvidia.com/cuda-downloads) for installation instructions.
+- Install the appropriate CUDA and cudnn version for your GPU (Refer to VeRL for supported CUDA version). Refer to the [NVIDIA CUDA Toolkit documentation](https://developer.nvidia.com/cuda-downloads) for installation instructions.
 - Verify the installation:
   ```bash
   nvcc --version
@@ -41,6 +41,8 @@ VeRL is used for the agent loop in the training stage. Follow these steps:
 
 - Install VeRL according to your CUDA version. Refer to the [VeRL installation guide](https://verl.readthedocs.io/en/v0.5.x/start/install.html#install-from-custom-environment).
 - For detailed instructions on setting up VeRL for the agent loop, see this [tutorial](https://github.com/zhaochenyang20/Awesome-ML-SYS-Tutorial/blob/703711904b3f69a187068916b29264c310f056cc/rlhf/verl/multi-turn/tool_examples/agent_loop.md) (This tutorial is written in chinese).
+
+Our VeRL part of of code is modified based upon ver  0.5.0.dev0.
 
 #### Step 3: Install PyTorch and Transformers
 If you find the installed pytorch and transformers is not supporting your CUDA version you can reinstall PyTorch and the Transformers library in your Python environment
@@ -63,12 +65,23 @@ Our version used is >=v0.0.4.post2.
 
 ## Running the Training Stage
 
+Set up config.ini in autograph/rag_server/config.ini
+```python
+[vllm_emb]
+URL = http://0.0.0.0:8128/v1
+KEY = EMPTY
+```
+
+
+### For 3B model training
 **Deploy Embedding Model**
 ```bash
 bash scripts/vllm_serve/qwen3-0.6b-emb.sh
 ```
-
-### For 3B model training
+**Deploy Generator Model**
+```bash
+bash scripts/vllm_serve/qwen3-0.6b-emb.sh
+```
 For Graph Retriever
 ```bash
 bash scripts/autograph-r1/run_qwen2.5-3b_instruct_graph.sh
@@ -80,6 +93,10 @@ bash scripts/autograph-r1/run_qwen2.5-3b_instruct_with_distract-iterative-hippor
 ```
 
 ### For 7B model training
+**Deploy Embedding Model**
+```bash
+bash scripts/vllm_serve/qwen3-0.6b-emb.sh
+```
 For Graph Retriever
 ```bash
 bash scripts/autograph-r1/run_qwen2.5-7b_instruct_graph.sh
@@ -101,7 +118,7 @@ To construct a knowledge graph from a general corpus, run the following script:
 python benchmark/autograph/custom_kg_extraction.py
 ```
 
-- **Input**: Specify the input corpus in the script or via command-line arguments (refer to the script documentation for details).
+- **Input**: Specify the model_name in the script or via command-line arguments (refer to the script for details).
 - **Output**: The script generates a knowledge graph stored in the specified output directory.
 
 ### 2. RAG Benchmarking

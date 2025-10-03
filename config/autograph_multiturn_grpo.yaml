@@ -20,3 +20,9 @@ actor_rollout_ref:
     multi_turn:
       enable: True
       format: qwen
+    use_api: True
+    rag_method: subgraph
+    text_linking: False
+    freeze_answer_api: False
+    iterative: False
+    tight: False

@@ -132,5 +132,11 @@ python3 -m verl.trainer.main_ppo \
     data.val_files="$VAL_DATA"  \
     trainer.default_local_dir="$CHECKPOINT_DIR" \
     custom_reward_function.path="$reward_fn_file_path" \
-    
+    actor_rollout_ref.rollout._target_=verl.third_party.autograph_r1.autograph_config.AutoGraphActorConfig \
+    actor_rollout_ref.rollout.use_api=True \
+    actor_rollout_ref.rollout.rag_method='hipporag' \
+    actor_rollout_ref.rollout.text_linking=$TEXT_LINKING \
+    actor_rollout_ref.rollout.freeze_answer_api=False \
+    actor_rollout_ref.rollout.iterative=$ITERATIVE \
+    actor_rollout_ref.rollout.tight=True \
     

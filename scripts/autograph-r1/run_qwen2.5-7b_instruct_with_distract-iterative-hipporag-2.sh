@@ -120,7 +120,7 @@ python3 -m verl.trainer.main_ppo \
     trainer.val_before_train=False \
     trainer.logger=['console','wandb'] \
     trainer.project_name='auto_graph_rl' \
-    trainer.experiment_name="azure-qwen2.5-7b-auto-graph-rl-distract-${DIFFFICULTY}-docsize${DOC_SIZE}-text-linking${TEXT_LINKING}-deduce-${DEDUCE_REWARD}-hipporag2-tight" \
+    trainer.experiment_name="refactor-azure-qwen2.5-7b-auto-graph-rl-distract-${DIFFFICULTY}-docsize${DOC_SIZE}-text-linking${TEXT_LINKING}-deduce-${DEDUCE_REWARD}-hipporag2-tight" \
     trainer.n_gpus_per_node=2 \
     trainer.nnodes=1 \
     trainer.total_training_steps=50 \
@@ -131,5 +131,11 @@ python3 -m verl.trainer.main_ppo \
     data.val_files="$VAL_DATA"  \
     trainer.default_local_dir="$CHECKPOINT_DIR" \
     custom_reward_function.path="$reward_fn_file_path" \
-    
+    actor_rollout_ref.rollout._target_=verl.third_party.autograph_r1.autograph_config.AutoGraphActorConfig \
+    actor_rollout_ref.rollout.use_api=True \
+    actor_rollout_ref.rollout.rag_method='hipporag2' \
+    actor_rollout_ref.rollout.text_linking=$TEXT_LINKING \
+    actor_rollout_ref.rollout.freeze_answer_api=False \
+    actor_rollout_ref.rollout.iterative=$ITERATIVE \
+    actor_rollout_ref.rollout.tight=True \
     

@@ -368,7 +368,6 @@ class SGLangRollout(BaseRollout):
             )
             # self.llm_generator = LLMGenerator(self._engine, model_name, backend="verl")
             self.rag_method = self.config.get("rag_method", "Not found")
-            print(f'Using local rag: {self.rag_method}')
             self.retriever_config = RetrieverConfig(self.rag_method)
             self.reranker = Reranker(self.emb_client)
             self.llm_generator = LLMGenerator(self._engine, model_name, backend="verl")
@@ -388,7 +387,8 @@ class SGLangRollout(BaseRollout):
                 print('Using freeze llm api for answer generation')
             else:
                 self.answer_client = None
-
+            #### Print custom config here
+            print(f"RAG method: {self.rag_method} \n text_linking: {self.text_linking} \n freeze_answer_api: {self.freeze_answer_api} \n iterative: {self.iterative} \n tight: {self.tight}")
             # else:
             #     # API initialization
             #     api_service_provider = self.config.get('api_domain')
