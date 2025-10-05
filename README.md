@@ -19,12 +19,6 @@ The effectiveness of Retrieval-Augmented Generation (RAG) is often hindered by a
 -   **Two-Stage Pipeline:** A clear separation between the graph constructor training stage and the inference/benchmarking stage.
 -   **Reproducible Benchmarking:** Provides scripts to reproduce our results and evaluate custom-built knowledge graphs on multiple QA benchmarks.
 
-
-Of course. Here is a refined version of your original "Setup Instructions" that maintains the exact flow and details you provided, but reorganizes them for clarity and simplicity.
-
-It is provided in a single markdown code block for easy copying.
-
-
 ## Setup Instructions
 
 This guide covers the environment setup for both the training and inference stages. All packages should be installed in the same environment.
