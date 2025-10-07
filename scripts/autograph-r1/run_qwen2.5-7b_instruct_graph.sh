@@ -37,10 +37,11 @@ DIFFFICULTY="easy" # available: easy, medium
 DOC_SIZE=15 # available: 8,12,15
 WITH_DISTRACT="False" # Only True is supported now
 TEXT_LINKING="False" # available: True, False
-F1_REWARD="True" # available: True, False
+F1_REWARD="False" # available: True, False
 MIX_DATA="True" # available: True, False
-DEDUCE_REWARD="False"
+DEDUCE_REWARD="True"
 ITERATIVE="True"
+TIGHT="False" # available: True, False
 
 TRAIN_DATA="/data/autograph/data/musique_train_doc_size_${DOC_SIZE}_distract_${WITH_DISTRACT}_with_mcq_False_difficulty_${DIFFFICULTY}_text_linking_${TEXT_LINKING}.parquet"
 VAL_DATA="/data/autograph/data/musique_validation_doc_size_${DOC_SIZE}_distract_${WITH_DISTRACT}_with_mcq_False_difficulty_${DIFFFICULTY}_text_linking_${TEXT_LINKING}.parquet"
@@ -69,10 +70,13 @@ CHECKPOINT_DIR="/data/autograph/checkpoints/${TIMESTAMP}_qwen2.5-7b-autograph-di
 
 if [ "$TEXT_LINKING" = "True" ]; then
     reward_fn_file_path="verl/third_party/autograph_r1/recall_reward.py"
+    REWARD_FUNCTION_NAME="recall_reward"
 elif [ "$F1_REWARD" = "True" ]; then
     reward_fn_file_path="verl/third_party/autograph_r1/f1_reward.py"
+    REWARD_FUNCTION_NAME="f1_reward"
 elif [ "$DEDUCE_REWARD" = "True" ]; then
     reward_fn_file_path="verl/third_party/autograph_r1/deduce_reward.py"
+    REWARD_FUNCTION_NAME="deducible_reward"
 else
     reward_fn_file_path="verl/third_party/autograph_r1/reward.py"
 fi
@@ -121,7 +125,7 @@ python3 -m verl.trainer.main_ppo \
     trainer.val_before_train=False \
     trainer.logger=['console','wandb'] \
     trainer.project_name='auto_graph_rl' \
-    trainer.experiment_name="azure-qwen2.5-7b-auto-graph-rl-distract-${DIFFFICULTY}-docsize${DOC_SIZE}-text-linking${TEXT_LINKING}-deduce-${DEDUCE_REWARD}-f1" \
+    trainer.experiment_name="qwen2.5-7b-auto-graph-rl-distract-${DIFFFICULTY}-docsize${DOC_SIZE}-graph-retriever-deduce-${DEDUCE_REWARD}-tight-${TIGHT}" \
     trainer.n_gpus_per_node=2 \
     trainer.nnodes=1 \
     trainer.total_training_steps=50 \
@@ -138,5 +142,6 @@ python3 -m verl.trainer.main_ppo \
     actor_rollout_ref.rollout.text_linking=$TEXT_LINKING \
     actor_rollout_ref.rollout.freeze_answer_api=False \
     actor_rollout_ref.rollout.iterative=$ITERATIVE \
-    actor_rollout_ref.rollout.tight=True \
+    actor_rollout_ref.rollout.tight=$TIGHT \
+    actor_rollout_ref.rollout.reward_function=$REWARD_FUNCTION_NAME
     

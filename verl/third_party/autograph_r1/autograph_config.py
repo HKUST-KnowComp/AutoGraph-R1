@@ -10,3 +10,4 @@ class AutoGraphActorConfig(RolloutConfig):
     freeze_answer_api:bool = False # Whether use frozen answer API or use local frozen LLM to generate answers (Set true for 3B model, false for 7B model)
     iterative:bool = True # Whether iteratively construct KG triples for each document or not
     tight:bool = True # Whether use tight retrieval or not (tight retrieval means the number of hops / the number of retrieved documents is equal to the number of hops in the question / number of supporting contexts)
+    reward_function:str = 'deducible_reward' # available: f1_reward, deducible_reward, recall_reward

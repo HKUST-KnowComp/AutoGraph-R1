@@ -159,6 +159,13 @@ class SubgraphRetriever(BaseRetriever):
         """Retrieve a subgraph (or full KG) and generate an answer."""
         self.sub_queries = kwargs.get("sub_queries", [])
         self.answer = kwargs.get("answer", "unknown")
+        self.reward_function = kwargs.get("reward_function", None)
+        if self.reward_function == "deducible_reward":
+            self.answer_gen_fn = self.deduce_answer
+        elif self.reward_function == "f1_reward":
+            self.answer_gen_fn = self.generate_answer
+        elif self.reward_function not in ['f1_reward', 'deducible_reward']:
+            raise ValueError(f"reward_function {self.reward_function} not supported")
         self.KG = kg
         self.sampling_params = sampling_params
         await self.index_kg(kg)
@@ -172,8 +179,7 @@ class SubgraphRetriever(BaseRetriever):
             subgraph = await self.construct_subgraph(question, initial_nodes)
 
         # Generate answer using the subgraph (or full KG)
-        # answer = await self.deduce_answer(question, subgraph, self.answer)
-        answer = await self.generate_answer(question, subgraph)
+        answer = await self.answer_gen_fn(question, subgraph, self.answer)
 
         total_edges = len(self.KG.edges)
         subgraph_edges = len(subgraph.edges)
@@ -186,7 +192,7 @@ class SubgraphRetriever(BaseRetriever):
             "semantic_reward": 0.0
         })
 
-    async def generate_answer(self, query, subgraph: DiGraph):
+    async def generate_answer(self, query, subgraph: DiGraph, **kwargs):
         """Generate an answer using the subgraph (or full KG) with a single LLM call."""
         triples = [(u, d["relation"], v) for u, v, d in subgraph.edges(data=True)]
         triples_string = ". ".join([f"({s}-{r}->{o})" for s, r, o in triples])
@@ -208,7 +214,7 @@ class SubgraphRetriever(BaseRetriever):
             return "none"
         return generated_text
     
-    async def deduce_answer(self, query, subgraph: DiGraph, answer):
+    async def deduce_answer(self, query, subgraph: DiGraph, answer, **kwargs):
         """Generate an answer using the subgraph (or full KG) with a single LLM call."""
         triples = [(u, d["relation"], v) for u, v, d in subgraph.edges(data=True)]
         triples_string = ". ".join([f"({s}-{r}->{o})" for s, r, o in triples])

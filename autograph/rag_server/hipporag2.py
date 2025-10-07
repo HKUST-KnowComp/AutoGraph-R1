@@ -119,7 +119,10 @@ class HippoRAG2Retriever(BaseRetriever):
         self.node_list = []
         self.KG = kg
         top_n_passages = kwargs.get("top_n_passages", self.config.topN_passages)
-
+        self.reward_function = kwargs.get("reward_function", None)
+        if self.reward_function not in ['f1_reward', 'recall_reward']:
+            raise ValueError(f"reward_function {self.reward_function} not supported")
+        
         for node, attrs in kg.nodes(data=True):
             if attrs.get("node_type") == "text":
                 self.text_list.append(node)
@@ -163,26 +166,27 @@ class HippoRAG2Retriever(BaseRetriever):
         recall = await self.calculate_recall_reward(sorted_passages, self.supporting_context)
 
         # generate answer
-        # context = "\n".join(sorted_passages)
-        # prompt = ANSWER_GENERATION_PROMPT
-        # messages = [
-        #     {"role": "system", "content": prompt},
-        # ]
-        # self.sampling_params["temperature"] = self.config.temperature_reasoning
-        # messages.append({"role": "user", "content": f"{context}\n\n{question}"})
+        if self.reward_function == 'f1_reward':
+            context = "\n".join(sorted_passages)
+            prompt = ANSWER_GENERATION_PROMPT
+            messages = [
+                {"role": "system", "content": prompt},
+            ]
+            self.sampling_params["temperature"] = self.config.temperature_reasoning
+            messages.append({"role": "user", "content": f"{context}\n\n{question}"})
 
-        # generated_text = await self.llm_generator.generate_response(messages, **self.sampling_params)
-        # if "Answer:" in generated_text:
-        #     generated_text = generated_text.split("Answer:")[-1]
-        # elif "answer:" in generated_text:
-        #     generated_text = generated_text.split("answer:")[-1]
-        # # if answer is none
-        # if not generated_text:
-        #     return json.dumps({
-        #         "answer": "none",
-        #         "precision": precision,
-        #         "recall": recall
-        #     })
+            generated_text = await self.llm_generator.generate_response(messages, **self.sampling_params)
+            if "Answer:" in generated_text:
+                generated_text = generated_text.split("Answer:")[-1]
+            elif "answer:" in generated_text:
+                generated_text = generated_text.split("answer:")[-1]
+            # if answer is none
+
+            return json.dumps({
+                "answer": generated_text,
+                "precision": precision,
+                "recall": recall
+            })
         return json.dumps({
             "answer": "dummy answer",
             "precision": precision,

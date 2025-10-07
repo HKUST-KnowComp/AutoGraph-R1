@@ -357,7 +357,7 @@ class SGLangRollout(BaseRollout):
             model_name = actor_module
             self.tokenizer = AutoTokenizer.from_pretrained(model_name)
             api_service_provider = config_parser['vllm_emb']
-            print('using local initialized model for RAG')
+            print(f'Training {model_name}, using local initialized model for RAG')
             self.use_local_actor_for_rag = True
             self.emb_api_key = api_service_provider.get('KEY')
             self.emb_api_url = api_service_provider.get('URL')
@@ -368,6 +368,7 @@ class SGLangRollout(BaseRollout):
             )
             # self.llm_generator = LLMGenerator(self._engine, model_name, backend="verl")
             self.rag_method = self.config.get("rag_method", "Not found")
+            self.reward_function = self.config.get("reward_function", "Not found")
             self.retriever_config = RetrieverConfig(self.rag_method)
             self.reranker = Reranker(self.emb_client)
             self.llm_generator = LLMGenerator(self._engine, model_name, backend="verl")
@@ -389,18 +390,7 @@ class SGLangRollout(BaseRollout):
                 self.answer_client = None
             #### Print custom config here
             print(f"RAG method: {self.rag_method} \n text_linking: {self.text_linking} \n freeze_answer_api: {self.freeze_answer_api} \n iterative: {self.iterative} \n tight: {self.tight}")
-            # else:
-            #     # API initialization
-            #     api_service_provider = self.config.get('api_domain')
-            #     print(f"Using API service provider {api_service_provider} for RAG")
-            #     api_url = config_parser[api_service_provider]['URL']
-            #     api_key = config_parser[api_service_provider]['KEY']
-                
-            #     self.client = AsyncOpenAI(
-            #         base_url=api_url,
-            #         api_key=api_key,
-            #         timeout=30000
-            #     )
+            print(f"Reward Function: {self.reward_function}")
 
     def _init_distributed_env(self, device_mesh_cpu, **kwargs):
         self._device_mesh_cpu = device_mesh_cpu
@@ -910,7 +900,6 @@ class SGLangRollout(BaseRollout):
 
         rag_state = AutoGraphStateEnum.CONSTRUCTING 
         _req.interaction_kwargs['remaining_context'] = _req.interaction_kwargs.get("full_context", [])
-
         # Create request-level sampling parameters
         request_sampling_params = self.sampling_params.copy()
         if not do_sample:
@@ -974,7 +963,6 @@ class SGLangRollout(BaseRollout):
                 # since SGLang raises an error when max_new_tokens + 1 is greater to max_model_len (the extra
                 # token accounts for the EOS token).
                 prompt_length = len(_req.get_generation_prompt_ids(self.processing_class))
-
                 if prompt_length + 1 >= self.config.max_model_len:
                     finish_reason_type = FinishReasonTypeEnum.LENGTH
                     break
@@ -1285,7 +1273,6 @@ class SGLangRollout(BaseRollout):
             req_list = self._preprocess_prompt_to_async_rollout_requests(
                 prompts,
             )
-
             # distinguish training and validation
             if is_validate:
                 # Validation mode: process all requests without abort
@@ -1853,7 +1840,6 @@ class SGLangRollout(BaseRollout):
         image_data: Optional[list[Any]] = None,
         **kwargs
     ) -> dict:
-
         generation_prompt_ids = _req.get_generation_prompt_ids(self.processing_class)
         max_new_tokens = min(
             self.config.response_length, 
@@ -1902,7 +1888,8 @@ class SGLangRollout(BaseRollout):
                     kg=kg,
                     sampling_params=api_sampling_params,
                     sub_queries=decomposed_queries,
-                    answer=_req.interaction_kwargs.get("ground_truth")[0]
+                    answer=_req.interaction_kwargs.get("ground_truth")[0],
+                    reward_function=self.reward_function
                 )
                 output_text = answer
         elif self.rag_method == "tog":
@@ -1930,7 +1917,8 @@ class SGLangRollout(BaseRollout):
                     sampling_params=api_sampling_params,
                     Dmax=num_hop,
                     topN= num_hop,
-                    answer=_req.interaction_kwargs.get("ground_truth")[0]
+                    answer=_req.interaction_kwargs.get("ground_truth")[0],
+                    reward_function=self.reward_function
                 )
                 output_text = answer
         elif self.rag_method == "edge":
@@ -1951,6 +1939,7 @@ class SGLangRollout(BaseRollout):
                     question=question,
                     kg=kg,
                     sampling_params=api_sampling_params,
+                    reward_function=self.reward_function
                 )
                 output_text = answer
         elif self.text_linking and (self.rag_method == "hipporag" or self.rag_method == "hipporag2"):
@@ -1987,6 +1976,7 @@ class SGLangRollout(BaseRollout):
                     supporting_context=supporting_context,
                     full_context=full_context,
                     top_n_passages=top_n_passages,
+                    reward_function=self.reward_function
                 )
                 output_text = answer
 
@@ -2005,7 +1995,6 @@ class SGLangRollout(BaseRollout):
                 "id": _req.request_id,
             }
         }
-
         return output
 
 

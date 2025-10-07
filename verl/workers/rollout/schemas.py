@@ -579,6 +579,10 @@ class AsyncRolloutRequest(BaseModel):
             diff_surrounding_chars = 10
 
             messages = [msg.model_dump() for msg in self.messages]
+            # Fix for Llama templates: remove None tool_calls
+            for msg_dict in messages:
+                if msg_dict.get('tool_calls') is None:
+                    msg_dict.pop('tool_calls', None)
             tools = [tool.model_dump() for tool in self.tool_schemas] if self.tool_schemas else None
             full_prompt_info = self._handle_apply_chat_template(
                 processing_class,

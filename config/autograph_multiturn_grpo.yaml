@@ -19,10 +19,10 @@ actor_rollout_ref:
     name: sglang_async
     multi_turn:
       enable: True
-      format: qwen
     use_api: True
     rag_method: subgraph
     text_linking: False
     freeze_answer_api: False
     iterative: False
     tight: False
+    reward_function: deducible_reward # available: f1_reward, deducible_reward, recall_reward
