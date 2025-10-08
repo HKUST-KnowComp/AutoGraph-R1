@@ -35,7 +35,7 @@ CONFIG_PATH="$PROJECT_DIR/config"
 # AutoGraph parameters
 DIFFFICULTY="easy" # available: easy, medium
 DOC_SIZE=15 # available: 8,12,15
-WITH_DISTRACT="False" # Only True is supported now
+WITH_DISTRACT="False" # available: True, False (False for Graph Retriever, True for Text Retriever)
 TEXT_LINKING="False" # available: True, False
 F1_REWARD="False" # available: True, False
 MIX_DATA="True" # available: True, False
@@ -131,7 +131,7 @@ python3 -m verl.trainer.main_ppo \
     trainer.total_training_steps=50 \
     trainer.save_freq=50 \
     trainer.test_freq=-1 \
-    trainer.ray_wait_register_center_timeout=360000 \
+    trainer.ray_wait_register_center_timeout=36000000 \
     data.train_files="$TRAIN_DATA" \
     data.val_files="$VAL_DATA"  \
     trainer.default_local_dir="$CHECKPOINT_DIR" \

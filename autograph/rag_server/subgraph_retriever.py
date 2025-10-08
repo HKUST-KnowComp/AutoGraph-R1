@@ -39,14 +39,24 @@ class SubgraphRetriever(BaseRetriever):
                 "content": f"Extract all the named entities from: {text}"
             }
         ]
-        response = await self.llm_generator.generate_response(messages, **self.sampling_params)
         try:
+            response = await self.llm_generator.generate_response(messages, **self.sampling_params)
+            if not response or not isinstance(response, str):
+                return {}
+            
             entities_json = json_repair.loads(response)
+            
+            # Ensure entities_json is a dictionary
+            if not isinstance(entities_json, dict):
+                return {}
+                
+            # Check if "entities" key exists and is a list
+            if "entities" not in entities_json or not isinstance(entities_json["entities"], list):
+                return {}
+                
+            return entities_json
         except Exception as e:
             return {}
-        if "entities" not in entities_json or not isinstance(entities_json["entities"], list):
-            return {}
-        return entities_json
     
     async def index_kg(self, kg: DiGraph, batch_size:int = 100):
         nodes = list(kg.nodes)
@@ -88,7 +98,7 @@ class SubgraphRetriever(BaseRetriever):
             def search_entity_in_kg_instruct(entity: str) -> str:
                 task = "Given a question, retrieve the most relevant knowledge graph nodes."
                 return f"Instruct: {task}\nQuestion: {entity}"
-            entity_texts = [search_entity_in_kg_instruct(e) for e in entities]
+            entity_texts = [search_entity_in_kg_instruct(str(e)) for e in entities]
             entity_embeddings = await self.reranker.embed(entity_texts)
             sim_scores = entity_embeddings @ self.node_embeddings.T
             indices = np.argsort(sim_scores, axis=1)[:, -self.num_hop:]  # Get the last k indices after sorting

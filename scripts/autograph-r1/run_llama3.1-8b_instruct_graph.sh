@@ -66,7 +66,7 @@ fi
 
 TIMESTAMP=$(date +"%Y%m%d_%H%M%S")
 
-CHECKPOINT_DIR="/data/autograph/checkpoints/${TIMESTAMP}_Meta-Llama-3.2-3B-Instruct-autograph-distract_${DIFFFICULTY}-docsize${DOC_SIZE}-textlinking${TEXT_LINKING}-f1${F1_REWARD}"
+CHECKPOINT_DIR="/data/autograph/checkpoints/${TIMESTAMP}_Meta-Llama-3.1-8B-Instruct-autograph-distract_${DIFFFICULTY}-docsize${DOC_SIZE}-textlinking${TEXT_LINKING}-f1${F1_REWARD}"
 
 if [ "$TEXT_LINKING" = "True" ]; then
     reward_fn_file_path="verl/third_party/autograph_r1/recall_reward.py"
@@ -89,9 +89,9 @@ python3 -m verl.trainer.main_ppo \
     data.max_response_length=16384 \
     data.filter_overlong_prompts=True \
     data.shuffle=True \
-    data.truncation='error' \
+    data.truncation='middle' \
     data.return_raw_chat=True \
-    actor_rollout_ref.model.path=meta-llama/Llama-3.2-3B-Instruct \
+    actor_rollout_ref.model.path=meta-llama/Llama-3.1-8B-Instruct \
     actor_rollout_ref.actor.optim.lr=1e-6 \
     actor_rollout_ref.actor.optim.lr_warmup_steps_ratio=0.285 \
     actor_rollout_ref.model.use_remove_padding=True \
@@ -109,9 +109,9 @@ python3 -m verl.trainer.main_ppo \
     actor_rollout_ref.actor.fsdp_config.optimizer_offload=False \
     actor_rollout_ref.rollout.max_num_batched_tokens=32768 \
     actor_rollout_ref.rollout.max_model_len=32768 \
-    actor_rollout_ref.rollout.tensor_model_parallel_size=1 \
+    actor_rollout_ref.rollout.tensor_model_parallel_size=2 \
     actor_rollout_ref.rollout.name=sglang \
-    actor_rollout_ref.rollout.gpu_memory_utilization=0.25 \
+    actor_rollout_ref.rollout.gpu_memory_utilization=0.2 \
     actor_rollout_ref.rollout.n=5 \
     actor_rollout_ref.rollout.multi_turn.max_assistant_turns=$MAX_ASSISTANT_TURN \
     actor_rollout_ref.rollout.multi_turn.max_user_turns=$MAX_USER_TURN \
@@ -122,13 +122,13 @@ python3 -m verl.trainer.main_ppo \
     trainer.val_before_train=False \
     trainer.logger=['console','wandb'] \
     trainer.project_name='auto_graph_rl' \
-    trainer.experiment_name="Meta-Llama-3.2-3B-Instruct-auto-graph-rl-distract-${DIFFFICULTY}-docsize${DOC_SIZE}-graph-retriever-deduce-${DEDUCE_REWARD}-tight-${TIGHT}" \
+    trainer.experiment_name="Meta-Llama-3.1-8B-Instruct-auto-graph-rl-distract-${DIFFFICULTY}-docsize${DOC_SIZE}-graph-retriever-deduce-${DEDUCE_REWARD}-tight-${TIGHT}" \
     trainer.n_gpus_per_node=2 \
     trainer.nnodes=1 \
     trainer.total_training_steps=50 \
     trainer.save_freq=50 \
     trainer.test_freq=-1 \
-    trainer.ray_wait_register_center_timeout=360000 \
+    trainer.ray_wait_register_center_timeout=3600000 \
     data.train_files="$TRAIN_DATA" \
     data.val_files="$VAL_DATA"  \
     trainer.default_local_dir="$CHECKPOINT_DIR" \
@@ -137,7 +137,7 @@ python3 -m verl.trainer.main_ppo \
     actor_rollout_ref.rollout.use_api=True \
     actor_rollout_ref.rollout.rag_method='subgraph' \
     actor_rollout_ref.rollout.text_linking=$TEXT_LINKING \
-    actor_rollout_ref.rollout.freeze_answer_api=True \
+    actor_rollout_ref.rollout.freeze_answer_api=False \
     actor_rollout_ref.rollout.iterative=$ITERATIVE \
     actor_rollout_ref.rollout.tight=$TIGHT \
     
