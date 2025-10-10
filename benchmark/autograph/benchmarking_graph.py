@@ -31,22 +31,22 @@ def main():
         # Load SentenceTransformer model
         encoder_model_name = "Qwen/Qwen3-Embedding-0.6B"
         sentence_model = OpenAI(
-            base_url="http://0.0.0.0:8138/v1",
+            base_url="http://0.0.0.0:8130/v1",
             api_key="EMPTY KEY",
         )
         sentence_encoder = Qwen3Emb(sentence_model)
 
         reader_model_name = "Qwen/Qwen2.5-7B-Instruct"
         client = OpenAI(
-            base_url="http://0.0.0.0:8137/v1",
+            base_url="http://0.0.0.0:8131/v1",
             api_key="EMPTY KEY",
         )
         llm_generator = LLMGenerator(client=client, model_name=reader_model_name)
         
         checkpoint_path = args.model_name
-        if checkpoint_path == "Qwen/Qwen2.5-3B-Instruct" or checkpoint_path == "Qwen/Qwen2.5-7B-Instruct":
+        if checkpoint_path == "Qwen/Qwen2.5-3B-Instruct" or checkpoint_path == "Qwen/Qwen2.5-7B-Instruct" or checkpoint_path == 'meta-llama/Llama-3.2-3B-Instruct' or checkpoint_path == 'meta-llama/Llama-3.1-8B-Instruct':
         # get the name after '/'
-            output_directory = f'/data/httsangaj/autograph/checkpoints/{checkpoint_path.split("/")[-1]}/constructed_kg/{kg_name}_output'
+            output_directory = f'/data/autograph/checkpoints/{checkpoint_path.split("/")[-1]}/constructed_kg/{kg_name}_output'
         else:
             output_directory = f'{checkpoint_path}/constructed_kg/{kg_name}_output'
         if not args.use_upperbound:

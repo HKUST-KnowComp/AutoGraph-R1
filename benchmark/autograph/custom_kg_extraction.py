@@ -16,9 +16,9 @@ for keyword in keywords:
 
       filename_pattern = keyword
       checkpoint_path = args.model_name
-      input_directory = f'/home/knowcomp/projects/AutoSchemaKG/benchmark_data/autograph/{keyword}'
+      input_directory = f'/home/knowcomp/projects/autograph-r1/benchmark/autograph/{keyword}'
       output_directory = f'{checkpoint_path}/constructed_kg/{keyword}_output'
-      if checkpoint_path == "Qwen/Qwen2.5-3B-Instruct" or checkpoint_path == "Qwen/Qwen2.5-7B-Instruct":
+      if checkpoint_path == "Qwen/Qwen2.5-3B-Instruct" or checkpoint_path == "Qwen/Qwen2.5-7B-Instruct" or checkpoint_path == 'meta-llama/Llama-3.2-3B-Instruct' or checkpoint_path == 'meta-llama/Llama-3.1-8B-Instruct':
       # get the name after '/'
             output_directory = f'/data/autograph/checkpoints/{checkpoint_path.split("/")[-1]}/constructed_kg/{keyword}_output'
       print(f"Output directory: {output_directory}")
@@ -34,14 +34,14 @@ for keyword in keywords:
             max_workers=5,
             remove_doc_spaces=True, # For removing duplicated spaces in the document text
             include_concept=False, # Whether to include concept nodes and edges in the knowledge graph
-            triple_extraction_prompt_path='/home/knowcomp/projects/AutoSchemaKG/benchmark_data/autograph/custom_prompt.json',
-            triple_extraction_schema_path='/home/knowcomp/projects/AutoSchemaKG/benchmark_data/autograph/custom_schema.json',
+            triple_extraction_prompt_path='/home/knowcomp/projects/autograph-r1/benchmark/autograph/custom_prompt.json',
+            triple_extraction_schema_path='/home/knowcomp/projects/autograph-r1/benchmark/autograph/custom_schema.json',
             record=False, # Whether to record the results in a JSON file
       )
       kg_extractor = KnowledgeGraphExtractor(model=triple_generator, config=kg_extraction_config)
       # construct entity&event graph
       kg_extractor.run_extraction()
-      # Convert Triples Json to CSV
+      # # Convert Triples Json to CSV
       kg_extractor.convert_json_to_csv()
       # convert csv to graphml for networkx
       kg_extractor.convert_to_graphml()
