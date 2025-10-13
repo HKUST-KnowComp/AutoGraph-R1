@@ -27,18 +27,18 @@ def extract_solution(solution_str: str) -> Union[str, None]:
     try:
         assistant_parts = solution_str.split('assistant\n')
         if not assistant_parts:
-            return None, 0
+            return None, 0, 0
         last_assistant_response = assistant_parts[-1].strip()
         solution_dict = json_repair.loads(last_assistant_response)
         if isinstance(solution_dict, dict):
-            return solution_dict.get("answer", None), solution_dict.get("recall", 0)
+            return solution_dict.get("answer", None), solution_dict.get("recall", 0), solution_dict.get("triple_repetition", 0)
         elif isinstance(solution_dict, list):
             # Optionally, try to get answer from first element if it's a dict
             if solution_dict and isinstance(solution_dict[0], dict):
-                return solution_dict[0].get("answer", None), solution_dict[0].get("recall", 0)
-            return None, 0
+                return solution_dict[0].get("answer", None), solution_dict[0].get("recall", 0), solution_dict[0].get("triple_repetition", 0)
+            return None, 0, 0
         else:
-            return None, 0
+            return None, 0, 0
     except Exception as e:
         print(f"Error extracting solution: {e}")
         return None, 0
@@ -115,13 +115,14 @@ def f1_check(answer: Union[str, None], target: Union[str, List]) -> tuple:
     # Direct comparison with single target
     return compute_f1(answer, target)
 
-def compute_score(data_source, solution_str, ground_truth, extra_info=None) -> dict:
+def compute_score(data_source, solution_str, ground_truth, extra_info=None, **kwargs) -> dict:
     """
     Computes the reward as:
         reward = f1_score + model_recall
     """
+    triple_repetition_penalty = kwargs.get('triple_repetition_penalty', 0.0)
     # Extract values
-    answer, model_recall = extract_solution(solution_str)
+    answer, model_recall, triple_repetition = extract_solution(solution_str)
 
     # Default values
     f1_score = 0.0
@@ -131,26 +132,44 @@ def compute_score(data_source, solution_str, ground_truth, extra_info=None) -> d
 
     # Handle missing answer
     if answer is None:
-        return {
-            'score': 0.0,
-            'recall': 0.0
-        }
+        if triple_repetition_penalty > 0:
+            return {
+                'score': 0.0,
+                'recall': 0.0,
+                'triple_repetition': 0.0
+            }
+        else:
+            return {
+                'score': 0.0,
+                'recall': 0.0
+            }
 
     # Compute F1 metrics
     # f1_score, precision, recall = f1_check(answer, ground_truth["target"])
 
     try:
         model_recall = float(model_recall)
+        triple_repetition = float(triple_repetition)
     except (TypeError, ValueError):
         model_recall = 0.0
+        triple_repetition = 0.0
 
     # Compute reward: f1 score + model recall
-    reward = model_recall
+    if triple_repetition_penalty > 0:
+        reward = model_recall - triple_repetition_penalty * triple_repetition
+        reward = max(0.0, reward)  # Ensure non-negative
+        return {
+            'score': reward,
+            'recall': model_recall,
+            'triple_repetition': triple_repetition
+        }
+    else:
+        reward = model_recall 
 
-    # Clip to non-negative (should already be non-negative)
-    reward = max(0.0, reward)
+        # Clip to non-negative (should already be non-negative)
+        reward = max(0.0, reward)
 
-    return {
-        'score': reward,
-        'recall': model_recall
-    }
+        return {
+            'score': reward,
+            'recall': model_recall
+        }

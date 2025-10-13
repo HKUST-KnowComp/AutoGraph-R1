@@ -126,7 +126,7 @@ class ActorRolloutRefWorker(Worker, DistProfilerExtension):
                 backend=f"cpu:gloo,{get_device_name()}:{get_nccl_backend()}",
                 rank=rank,
                 world_size=world_size,
-                timeout=datetime.timedelta(seconds=self.config.get("nccl_timeout", 1800)),
+                timeout=datetime.timedelta(days=1),
                 init_method=os.environ.get("DIST_INIT_METHOD", None),
             )
 

@@ -11,3 +11,4 @@ class AutoGraphActorConfig(RolloutConfig):
     iterative:bool = True # Whether iteratively construct KG triples for each document or not
     tight:bool = True # Whether use tight retrieval or not (tight retrieval means the number of hops / the number of retrieved documents is equal to the number of hops in the question / number of supporting contexts)
     reward_function:str = 'deducible_reward' # available: f1_reward, deducible_reward, recall_reward
+    filter_repetition_rollout:bool = True # Whether filter out the excessive repetition in rollout stage

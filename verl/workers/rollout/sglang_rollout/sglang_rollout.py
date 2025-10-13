@@ -351,6 +351,7 @@ class SGLangRollout(BaseRollout):
         
         self.use_api = self.config.get("use_api", False)
         self.tight = self.config.get("tight", False)
+        self.filter_repetition_rollout = self.config.get("filter_repetition_rollout", False)
         self.use_local_actor_for_rag = False
         if self.use_api:
             # Model checking
@@ -1776,62 +1777,6 @@ class SGLangRollout(BaseRollout):
             return await self._handle_local_rag_engine_call(_req, sampling_params, image_data, **kwargs)
         else:
             raise NotImplementedError("Remote RAG engine call is not tested yet.")
-        # generation_prompt_ids = _req.get_generation_prompt_ids(self.processing_class)
-        # max_new_tokens = min(
-        #     self.config.response_length, 
-        #     self.config.max_model_len - len(generation_prompt_ids) - 1
-        # )
-        # api_sampling_params = {
-        #     "max_new_tokens": max_new_tokens,
-        #     "temperature": sampling_params.get("temperature", 0.7),
-        #     "frequency_penalty": sampling_params.get("frequency_penalty", 0.0),
-        # }
-        # question = _req.interaction_kwargs.get("question", "")
-        # decomposed_queries = _req.interaction_kwargs.get("sub_queries", [])
-        # messages = [{"role": x.role, "content": x.content} for x in _req.messages]
-        # triples_string = ""
-        # for i in range(len(messages) - 1, -1, -1):
-        #     item = messages[i]
-        #     if item.get("role") == "assistant":
-        #         triples_string = item.get("content")
-        #         break
-        # response = await self.client.chat.completions.create(
-        #     model="vllm-tog-rag",  # Model name (matches your server's response)
-        #     messages=[
-        #         {
-        #             "role": "user",
-        #             "content": json.dumps({
-        #                 "question": question,
-        #                 "triples_string": triples_string,
-        #                 "sampling_params": api_sampling_params
-        #             })  # Encode the KGQARequest as a JSON string
-        #         }
-        #     ],
-        #     extra_body={
-        #         "question": question,
-        #         "triples_string": triples_string,
-        #         "sampling_params": api_sampling_params,
-        #         "sub_queries": list(decomposed_queries)
-        #     }  # Pass the KGQARequest fields directly in extra_body
-        # )
-        # output_text = response.choices[0].message.content
-        # max_output_length = self.config.response_length
-        # if len(output_text) > max_output_length:
-        #     # Truncate the output text to the maximum allowed length
-        #     output_text = output_text[:max_output_length]
-        #     finish_reason = {"type": "length"}  # Indicate truncation
-        # else:
-        #     finish_reason = {"type": "stop"}  # Normal completion
-
-        # output = {
-        #     "text": output_text,
-        #     "meta_info": {
-        #         "finish_reason": finish_reason,
-        #         "id": _req.request_id,
-        #     }
-        # }
-
-        # return output
 
     async def _handle_local_rag_engine_call(
         self,
@@ -1979,6 +1924,52 @@ class SGLangRollout(BaseRollout):
                     reward_function=self.reward_function
                 )
                 output_text = answer
+                
+        if not has_error and self.filter_repetition_rollout:
+            # add triple repetition penalty
+            title_triple_dict = _req.interaction_kwargs.get("title_triple_dict", {})
+            # get all triples from title_triple_dict
+            gen_triples = []
+            for t_idx in list(title_triple_dict.keys()):
+                triple = title_triple_dict[t_idx]["triple"]
+                # Ensure all components are strings, not lists
+                subject = str(triple['subject']) if not isinstance(triple['subject'], str) else triple['subject']
+                relation = str(triple['relation']) if not isinstance(triple['relation'], str) else triple['relation']
+                obj = str(triple['object']) if not isinstance(triple['object'], str) else triple['object']
+
+                # Only add if all components are non-empty
+                if subject and relation and obj:
+                    gen_triples.append((subject, relation, obj))
+
+            # Calculate triple repetition ratio
+            if len(gen_triples) > 0:
+                unique_triples = set(gen_triples)
+                num_unique = len(unique_triples)
+                num_total = len(gen_triples)
+                repetition_ratio = (num_total - num_unique) / num_total if num_total > 0 else 0.0
+            else:
+                repetition_ratio = 0.0
+            
+            # Add repetition ratio to output_text (which should be a json form string)
+            if repetition_ratio > 0.3:
+                output_text = "Error: Excessive triple repetition detected"
+                repetition_ratio = 1.0 # since the answer will be 0 any way
+            temp_output_text_json = json_repair.loads(output_text)
+            
+            # Check if it's actually a dictionary
+            if isinstance(temp_output_text_json, dict):
+                temp_output_text_json["triple_repetition"] = repetition_ratio
+                output_text = json.dumps(temp_output_text_json)
+            else:
+                # If it's not a dict, insert the field right after the opening '{'
+                first_brace_index = output_text.find('{')
+                if first_brace_index != -1:
+                    # Insert after the opening brace
+                    output_text = (
+                        output_text[:first_brace_index + 1] + 
+                        f'"triple_repetition": {repetition_ratio}, ' + 
+                        output_text[first_brace_index + 1:]
+                    )
 
         max_output_length = self.config.response_length
         if len(output_text) > max_output_length:

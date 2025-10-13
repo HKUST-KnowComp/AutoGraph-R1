@@ -5,6 +5,8 @@
 export NCCL_P2P_LEVEL=NVL
 export CUDA_LAUNCH_BLOCKING=1
 export HYDRA_FULL_ERROR=1
+export GLOO_SOCKET_IFNAME=lo
+export NCCL_SOCKET_IFNAME=lo
 # export RAY_BACKEND_LOG_LEVEL=debug
 # export RAY_LOG_TO_STDERR=1
 # Function to get a value from the config file
@@ -41,7 +43,7 @@ F1_REWARD="False" # available: True, False
 MIX_DATA="True" # available: True, False
 DEDUCE_REWARD="True"
 ITERATIVE="True"
-TIGHT="True" # available: True, False
+TIGHT="False" # available: True, False
 
 TRAIN_DATA="/data/autograph/data/musique_train_doc_size_${DOC_SIZE}_distract_${WITH_DISTRACT}_with_mcq_False_difficulty_${DIFFFICULTY}_text_linking_${TEXT_LINKING}.parquet"
 VAL_DATA="/data/autograph/data/musique_validation_doc_size_${DOC_SIZE}_distract_${WITH_DISTRACT}_with_mcq_False_difficulty_${DIFFFICULTY}_text_linking_${TEXT_LINKING}.parquet"
@@ -85,8 +87,8 @@ python3 -m verl.trainer.main_ppo \
     algorithm.use_kl_in_reward=False \
     data.train_batch_size=64 \
     data.val_batch_size=64 \
-    data.max_prompt_length=16384 \
-    data.max_response_length=16384 \
+    data.max_prompt_length=8192 \
+    data.max_response_length=8192 \
     data.filter_overlong_prompts=True \
     data.shuffle=True \
     data.truncation='middle' \
@@ -107,8 +109,8 @@ python3 -m verl.trainer.main_ppo \
     actor_rollout_ref.model.enable_activation_offload=True \
     actor_rollout_ref.actor.fsdp_config.param_offload=False \
     actor_rollout_ref.actor.fsdp_config.optimizer_offload=False \
-    actor_rollout_ref.rollout.max_num_batched_tokens=32768 \
-    actor_rollout_ref.rollout.max_model_len=32768 \
+    actor_rollout_ref.rollout.max_num_batched_tokens=16384 \
+    actor_rollout_ref.rollout.max_model_len=16384 \
     actor_rollout_ref.rollout.tensor_model_parallel_size=2 \
     actor_rollout_ref.rollout.name=sglang \
     actor_rollout_ref.rollout.gpu_memory_utilization=0.2 \
@@ -122,7 +124,7 @@ python3 -m verl.trainer.main_ppo \
     trainer.val_before_train=False \
     trainer.logger=['console','wandb'] \
     trainer.project_name='auto_graph_rl' \
-    trainer.experiment_name="Meta-Llama-3.1-8B-Instruct-auto-graph-rl-distract-${DIFFFICULTY}-docsize${DOC_SIZE}-graph-retriever-deduce-${DEDUCE_REWARD}-tight-${TIGHT}" \
+    trainer.experiment_name="Meta-Llama-3.1-8B-Instruct-auto-graph-rl-distract-${DIFFFICULTY}-docsize${DOC_SIZE}-graph-retriever-deduce-${DEDUCE_REWARD}-tight-${TIGHT}-with-repetition-penalty" \
     trainer.n_gpus_per_node=2 \
     trainer.nnodes=1 \
     trainer.total_training_steps=50 \
@@ -140,4 +142,6 @@ python3 -m verl.trainer.main_ppo \
     actor_rollout_ref.rollout.freeze_answer_api=False \
     actor_rollout_ref.rollout.iterative=$ITERATIVE \
     actor_rollout_ref.rollout.tight=$TIGHT \
+    actor_rollout_ref.rollout.filter_repetition_rollout=True \
+    custom_reward_function.reward_kwargs.triple_repetition_penalty=1.0
     

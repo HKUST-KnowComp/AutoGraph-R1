@@ -138,6 +138,6 @@ python3 -m verl.trainer.main_ppo \
     actor_rollout_ref.rollout.text_linking=$TEXT_LINKING \
     actor_rollout_ref.rollout.freeze_answer_api=True \
     actor_rollout_ref.rollout.iterative=$ITERATIVE \
-    actor_rollout_ref.rollout.tight=True \
+    actor_rollout_ref.rollout.tight=False \
     
     

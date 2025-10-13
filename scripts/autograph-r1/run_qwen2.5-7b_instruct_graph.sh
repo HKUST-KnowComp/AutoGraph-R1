@@ -88,8 +88,8 @@ python3 -m verl.trainer.main_ppo \
     algorithm.use_kl_in_reward=False \
     data.train_batch_size=64 \
     data.val_batch_size=64 \
-    data.max_prompt_length=16384 \
-    data.max_response_length=16384 \
+    data.max_prompt_length=8192 \
+    data.max_response_length=8192 \
     data.filter_overlong_prompts=True \
     data.shuffle=True \
     data.truncation='error' \
@@ -110,8 +110,8 @@ python3 -m verl.trainer.main_ppo \
     actor_rollout_ref.model.enable_activation_offload=True \
     actor_rollout_ref.actor.fsdp_config.param_offload=False \
     actor_rollout_ref.actor.fsdp_config.optimizer_offload=False \
-    actor_rollout_ref.rollout.max_num_batched_tokens=32768 \
-    actor_rollout_ref.rollout.max_model_len=32768 \
+    actor_rollout_ref.rollout.max_num_batched_tokens=16384 \
+    actor_rollout_ref.rollout.max_model_len=16384 \
     actor_rollout_ref.rollout.tensor_model_parallel_size=1 \
     actor_rollout_ref.rollout.name=sglang \
     actor_rollout_ref.rollout.gpu_memory_utilization=0.25 \
@@ -143,5 +143,5 @@ python3 -m verl.trainer.main_ppo \
     actor_rollout_ref.rollout.freeze_answer_api=False \
     actor_rollout_ref.rollout.iterative=$ITERATIVE \
     actor_rollout_ref.rollout.tight=$TIGHT \
-    actor_rollout_ref.rollout.reward_function=$REWARD_FUNCTION_NAME
+    actor_rollout_ref.rollout.reward_function=$REWARD_FUNCTION_NAME \
     

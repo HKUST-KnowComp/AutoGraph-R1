@@ -2,6 +2,8 @@ from atlas_rag.kg_construction.triple_extraction import KnowledgeGraphExtractor
 from atlas_rag.kg_construction.triple_config import ProcessingConfig
 from atlas_rag.llm_generator import LLMGenerator
 from openai import OpenAI
+import os
+from openai import OpenAI
 from configparser import ConfigParser
 import argparse
 parser = argparse.ArgumentParser(description="Custom KG Extraction")
@@ -11,16 +13,20 @@ keywords = ["2wikimultihopqa","musique", "hotpotqa", "2021wiki"]
 # keywords = ["2021wiki"]
 for keyword in keywords:
       model_name = args.model_name
+
       client = OpenAI(base_url="http://0.0.0.0:8111/v1", api_key="EMPTY")
-      triple_generator = LLMGenerator(client=client, model_name=model_name)
+      triple_generator = LLMGenerator(client=client, model_name=model_name, max_workers=5)
 
       filename_pattern = keyword
       checkpoint_path = args.model_name
       input_directory = f'/home/knowcomp/projects/autograph-r1/benchmark/autograph/{keyword}'
-      output_directory = f'{checkpoint_path}/constructed_kg/{keyword}_output'
-      if checkpoint_path == "Qwen/Qwen2.5-3B-Instruct" or checkpoint_path == "Qwen/Qwen2.5-7B-Instruct" or checkpoint_path == 'meta-llama/Llama-3.2-3B-Instruct' or checkpoint_path == 'meta-llama/Llama-3.1-8B-Instruct':
-      # get the name after '/'
-            output_directory = f'/data/autograph/checkpoints/{checkpoint_path.split("/")[-1]}/constructed_kg/{keyword}_output'
+      if not checkpoint_path.startswith('/'):
+            # HuggingFace model name pattern (e.g., "Qwen/Qwen2.5-3B-Instruct")
+            model_short_name = checkpoint_path.split("/")[-1]
+            output_directory = f'/data/autograph/checkpoints/{model_short_name}/constructed_kg/{keyword}_output'
+      else:
+            # Local checkpoint path
+            output_directory = f'{checkpoint_path}/constructed_kg/{keyword}_output'
       print(f"Output directory: {output_directory}")
       # triple_generator = LLMGenerator(client, model_name=model_name)
       kg_extraction_config = ProcessingConfig(

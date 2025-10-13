@@ -27,18 +27,18 @@ def extract_solution(solution_str: str) -> Union[str, None]:
     try:
         assistant_parts = solution_str.split('assistant\n')
         if not assistant_parts:
-            return None
+            return None, 1, 0, 0
         last_assistant_response = assistant_parts[-1].strip()
         solution_dict = json_repair.loads(last_assistant_response)
         if isinstance(solution_dict, dict):
-            return solution_dict.get("answer", None), solution_dict.get("edge_coverage", 1), solution_dict.get("semantic_reward", 0)
+            return solution_dict.get("answer", None), solution_dict.get("edge_coverage", 1), solution_dict.get("semantic_reward", 0), solution_dict.get("triple_repetition", 0)
         elif isinstance(solution_dict, list):
             # Optionally, try to get answer from first element if it's a dict
             if solution_dict and isinstance(solution_dict[0], dict):
-                return solution_dict[0].get("answer", None), solution_dict[0].get("edge_coverage", 1), solution_dict[0].get("semantic_reward", 0)
-            return None, 1, 0
+                return solution_dict[0].get("answer", None), solution_dict[0].get("edge_coverage", 1), solution_dict[0].get("semantic_reward", 0), solution_dict[0].get("triple_repetition", 0)
+            return None, 1, 0, 0
         else:
-            return None, 1, 0
+            return None, 1, 0, 0
     except Exception as e:
         print(f"Error extracting solution: {e}")
         return None, 1, 0
@@ -111,30 +111,47 @@ def f1_check(answer: Union[str, None], target: Union[str, List]) -> float:
     return compute_f1(answer, target)
 
 
-def compute_score(data_source, solution_str, ground_truth, extra_info=None) -> dict:
+def compute_score(data_source, solution_str, ground_truth, extra_info=None, **kwargs) -> dict:
     """
     Computes the reward as just the F1 score, ignoring edge_coverage and semantic_reward.
     """
+    triple_repetition_penalty = kwargs.get('triple_repetition_penalty', 0.0)
     # Extract values
-    answer, _, _ = extract_solution(solution_str)
+    answer, _, _, triple_repetition = extract_solution(solution_str)
 
     # Default
     f1_score = 0.0
 
     # Handle missing answer
     if answer is None:
-        return {
-            'score': 0.0,
-            'f1_score': 0.0,
-        }
+        if triple_repetition_penalty > 0:
+            return {
+                'score': 0.0,
+                'f1_score': 0.0,
+                'triple_repetition': 0.0
+            }
+        else:
+            return {
+                'score': 0.0,
+                'f1_score': 0.0,
+            }
 
     # Compute F1 score
     f1_score = f1_check(answer, ground_truth["target"])
 
     # Just use F1 as the reward directly
-    reward = f1_score
+    if triple_repetition_penalty >0 :
+        reward = f1_score - triple_repetition_penalty * triple_repetition
+        reward = max(0.0, reward)  # Clip to non-negative
+        return {
+            'score': reward,  # This is the main reward used by the system
+            'f1_score': f1_score,
+            'triple_repetition': triple_repetition
+        }
+    else:
+        reward = f1_score
 
-    return {
-        'score': reward,  # This is the main reward used by the system
-        'f1_score': f1_score,
-    }
+        return {
+            'score': reward,  # This is the main reward used by the system
+            'f1_score': f1_score,
+        }
