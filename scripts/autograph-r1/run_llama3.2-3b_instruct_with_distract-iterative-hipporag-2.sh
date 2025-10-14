@@ -65,7 +65,7 @@ fi
 
 TIMESTAMP=$(date +"%Y%m%d_%H%M%S")
 
-CHECKPOINT_DIR="/data/autograph/checkpoints/${TIMESTAMP}_qwen2.5-3b-autograph-distract_${DIFFFICULTY}-docsize${DOC_SIZE}-textlinking${TEXT_LINKING}-hipporag2-tight"
+CHECKPOINT_DIR="/data/autograph/checkpoints/${TIMESTAMP}_Llama-3.2-3B-Instructb-autograph-distract_${DIFFFICULTY}-docsize${DOC_SIZE}-textlinking${TEXT_LINKING}-hipporag2-tight"
 
 if [ "$TEXT_LINKING" = "True" ]; then
     reward_fn_file_path="verl/third_party/autograph_r1/recall_reward.py"
@@ -93,7 +93,7 @@ python3 -m verl.trainer.main_ppo \
     data.shuffle=True \
     data.truncation='error' \
     data.return_raw_chat=True \
-    actor_rollout_ref.model.path=Qwen/Qwen2.5-3B-Instruct \
+    actor_rollout_ref.model.path=meta-llama/Llama-3.2-3B-Instruct \
     actor_rollout_ref.actor.optim.lr=1e-6 \
     actor_rollout_ref.actor.optim.lr_warmup_steps_ratio=0.285 \
     actor_rollout_ref.model.use_remove_padding=True \
@@ -124,7 +124,7 @@ python3 -m verl.trainer.main_ppo \
     trainer.val_before_train=False \
     trainer.logger=['console','wandb'] \
     trainer.project_name='auto_graph_rl' \
-    trainer.experiment_name="azure-qwen2.5-3b-auto-graph-rl-distract-${DIFFFICULTY}-docsize${DOC_SIZE}-text-linking${TEXT_LINKING}-deduce-${DEDUCE_REWARD}-hipporag2-tight" \
+    trainer.experiment_name="Llama-3.2-3B-Instruct-auto-graph-rl-distract-${DIFFFICULTY}-docsize${DOC_SIZE}-text-linking${TEXT_LINKING}-deduce-${DEDUCE_REWARD}-hipporag2-tight" \
     trainer.n_gpus_per_node=2 \
     trainer.nnodes=1 \
     trainer.total_training_steps=50 \
