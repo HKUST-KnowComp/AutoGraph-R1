@@ -144,4 +144,5 @@ python3 -m verl.trainer.main_ppo \
     actor_rollout_ref.rollout.iterative=$ITERATIVE \
     actor_rollout_ref.rollout.tight=$TIGHT \
     actor_rollout_ref.rollout.reward_function=$REWARD_FUNCTION_NAME \
+    custom_reward_function.reward_kwargs.triple_repetition_penalty=0.0
     

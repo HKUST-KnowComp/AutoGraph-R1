@@ -3,3 +3,4 @@ autograph-r1/data
 config.ini
 *.log
 wandb
+outputs

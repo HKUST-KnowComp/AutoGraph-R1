@@ -56,15 +56,16 @@ if [ "$MIX_DATA" = "True" ] && [ "$ITERATIVE" = "False" ]; then
 
 elif [ "$MIX_DATA" = "True" ] && [ "$ITERATIVE" = "True" ]; then
     # Case 2: MIX_DATA=True, ITERATIVE=True
-    TRAIN_DATA="/data/autograph/data/mixed_hotpot_musique_train_doc_size_${DOC_SIZE}_distract_${WITH_DISTRACT}_iterate.parquet"
-    VAL_DATA="/data/autograph/data/mixed_hotpot_musique_valid_doc_size_${DOC_SIZE}_distract_${WITH_DISTRACT}_iterate.parquet"
+    TRAIN_DATA="/data/autograph/data/mixed_hotpot_musique_train_doc_size_15_distract_${WITH_DISTRACT}_iterate.parquet"
+    VAL_DATA="/data/autograph/data/mixed_hotpot_musique_valid_doc_size_15_distract_${WITH_DISTRACT}_iterate.parquet"
+    DOC_SIZE="15"
     MAX_ASSISTANT_TURN=16
     MAX_USER_TURN=16
 fi
 
 TIMESTAMP=$(date +"%Y%m%d_%H%M%S")
 
-CHECKPOINT_DIR="/data/autograph/checkpoints/${TIMESTAMP}_qwen2.5-7b-autograph-distract_${DIFFFICULTY}-docsize${DOC_SIZE}-textlinking${TEXT_LINKING}-hipporag2-tight"
+CHECKPOINT_DIR="/data/autograph/checkpoints/${TIMESTAMP}_Llama-3.2-1B-Instruct-autograph-distract_${DIFFFICULTY}-docsize${DOC_SIZE}-textlinking${TEXT_LINKING}-hipporag2-tight"
 
 if [ "$TEXT_LINKING" = "True" ]; then
     reward_fn_file_path="verl/third_party/autograph_r1/recall_reward.py"
@@ -93,14 +94,14 @@ python3 -m verl.trainer.main_ppo \
     data.shuffle=True \
     data.truncation='error' \
     data.return_raw_chat=True \
-    actor_rollout_ref.model.path=Qwen/Qwen2.5-7B-Instruct \
+    actor_rollout_ref.model.path=meta-llama/Llama-3.2-1B-Instruct \
     actor_rollout_ref.actor.optim.lr=1e-6 \
     actor_rollout_ref.actor.optim.lr_warmup_steps_ratio=0.285 \
     actor_rollout_ref.model.use_remove_padding=True \
-    actor_rollout_ref.actor.ppo_mini_batch_size=2 \
-    actor_rollout_ref.actor.ppo_micro_batch_size_per_gpu=1 \
-    actor_rollout_ref.rollout.log_prob_micro_batch_size_per_gpu=1 \
-    actor_rollout_ref.ref.log_prob_micro_batch_size_per_gpu=1 \
+    actor_rollout_ref.actor.ppo_mini_batch_size=4 \
+    actor_rollout_ref.actor.ppo_micro_batch_size_per_gpu=2 \
+    actor_rollout_ref.rollout.log_prob_micro_batch_size_per_gpu=2 \
+    actor_rollout_ref.ref.log_prob_micro_batch_size_per_gpu=2 \
     actor_rollout_ref.actor.use_kl_loss=False \
     actor_rollout_ref.actor.kl_loss_coef=0.001 \
     actor_rollout_ref.actor.kl_loss_type=low_var_kl \
@@ -124,13 +125,13 @@ python3 -m verl.trainer.main_ppo \
     trainer.val_before_train=False \
     trainer.logger=['console','wandb'] \
     trainer.project_name='auto_graph_rl' \
-    trainer.experiment_name="refactor-azure-qwen2.5-7b-auto-graph-rl-distract-${DIFFFICULTY}-docsize${DOC_SIZE}-text-linking${TEXT_LINKING}-deduce-${DEDUCE_REWARD}-hipporag2-tight" \
+    trainer.experiment_name="Llama-3.2-1B-Instructb-auto-graph-rl-distract-${DIFFFICULTY}-docsize${DOC_SIZE}-text-linking${TEXT_LINKING}-deduce-${DEDUCE_REWARD}-hipporag2-tight" \
     trainer.n_gpus_per_node=2 \
     trainer.nnodes=1 \
     trainer.total_training_steps=50 \
     trainer.save_freq=50 \
     trainer.test_freq=-1 \
-    trainer.ray_wait_register_center_timeout=360000 \
+    trainer.ray_wait_register_center_timeout=36000 \
     data.train_files="$TRAIN_DATA" \
     data.val_files="$VAL_DATA"  \
     trainer.default_local_dir="$CHECKPOINT_DIR" \
@@ -143,5 +144,4 @@ python3 -m verl.trainer.main_ppo \
     actor_rollout_ref.rollout.iterative=$ITERATIVE \
     actor_rollout_ref.rollout.filter_repetition_rollout=True \
     actor_rollout_ref.rollout.reward_function=$reward_function \
-    custom_reward_function.reward_kwargs.triple_repetition_penalty=0.0
-    
+    custom_reward_function.reward_kwargs.triple_repetition_penalty=1.0

@@ -41,7 +41,7 @@ def extract_solution(solution_str: str) -> Union[str, None]:
             return None, 0, 0
     except Exception as e:
         print(f"Error extracting solution: {e}")
-        return None, 0
+        return None, 0, 0
 
 def get_tokens(text: str) -> Set[str]:
     """

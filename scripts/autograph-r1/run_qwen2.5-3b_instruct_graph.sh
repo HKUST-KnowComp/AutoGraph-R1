@@ -139,5 +139,6 @@ python3 -m verl.trainer.main_ppo \
     actor_rollout_ref.rollout.freeze_answer_api=True \
     actor_rollout_ref.rollout.iterative=$ITERATIVE \
     actor_rollout_ref.rollout.tight=False \
+    custom_reward_function.reward_kwargs.triple_repetition_penalty=0.0
     
     

@@ -1924,7 +1924,6 @@ class SGLangRollout(BaseRollout):
                     reward_function=self.reward_function
                 )
                 output_text = answer
-                
         if not has_error and self.filter_repetition_rollout:
             # add triple repetition penalty
             title_triple_dict = _req.interaction_kwargs.get("title_triple_dict", {})

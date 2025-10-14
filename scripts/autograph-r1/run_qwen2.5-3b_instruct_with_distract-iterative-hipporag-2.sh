@@ -69,12 +69,16 @@ CHECKPOINT_DIR="/data/autograph/checkpoints/${TIMESTAMP}_qwen2.5-3b-autograph-di
 
 if [ "$TEXT_LINKING" = "True" ]; then
     reward_fn_file_path="verl/third_party/autograph_r1/recall_reward.py"
+    reward_function="recall_reward"
 elif [ "$F1_REWARD" = "True" ]; then
     reward_fn_file_path="verl/third_party/autograph_r1/f1_reward.py"
+    reward_function="f1_reward"
 elif [ "$DEDUCE_REWARD" = "True" ]; then
     reward_fn_file_path="verl/third_party/autograph_r1/deduce_reward.py"
+    reward_function="deduce_reward"
 else
-    reward_fn_file_path="verl/third_party/autograph_r1/reward.py"
+    echo "Please specify a reward function: text_linking, f1_reward, or deduce_reward"
+    exit 1
 fi
 
 python3 -m verl.trainer.main_ppo \
@@ -138,7 +142,9 @@ python3 -m verl.trainer.main_ppo \
     actor_rollout_ref.rollout.text_linking=$TEXT_LINKING \
     actor_rollout_ref.rollout.freeze_answer_api=True \
     actor_rollout_ref.rollout.iterative=$ITERATIVE \
-    actor_rollout_ref.rollout.tight=True \
+    actor_rollout_ref.rollout.filter_repetition_rollout=True \
+    actor_rollout_ref.rollout.reward_function=$reward_function \
+    custom_reward_function.reward_kwargs.triple_repetition_penalty=1.0
 
     
     
