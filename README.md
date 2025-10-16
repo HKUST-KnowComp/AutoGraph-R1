@@ -74,9 +74,11 @@ Install the core libraries for deep learning and the RL agent loop.
 ### 3. Install Inference Dependencies 🔍
 For the inference stage, an additional package is required for the KG creation pipeline.
 - **Atlas-RAG**
-  We use `v0.0.4.post2` or newer. Install it in the same environment:
+  We use `v0.0.5` branch of [atlas-rag](https://github.com/HKUST-KnowComp/AutoSchemaKG/tree/release/v0.0.5). Install it in the same environment:
   ```bash
-  pip install "atlas-rag>=0.0.4.post2"
+  git clone -b release/v0.0.5 https://github.com/HKUST-KnowComp/AutoSchemaKG.git
+  cd AutoSchemaKG
+  pip install -e .
   ```
 ## 🧪 Running the Pipeline
 The AutoGraph-R1 pipeline consists of a training stage and an inference stage.
@@ -98,7 +100,7 @@ KEY = EMPTY
 ### Stage 1: Training the Graph Constructor 🏋️
 This stage uses RL to fine-tune an LLM to build effective knowledge graphs.
 
-> **Hardware Note:** The following scripts are configured for 2xH100 GPUs. You may need to adjust `gpu_memory_utilization` in the scripts and the `CUDA_VISIBLE_DEVICES` environment variable for your specific hardware.
+> **Hardware Note:** The following scripts are configured for 2xH100 GPUs. You may need to adjust `gpu_memory_utilization,`, `trainer.n_gpus_per_node` etc in the scripts and the `CUDA_VISIBLE_DEVICES` environment variable for your specific hardware.
 
 **1. Launch the LLM API Servers**
 
@@ -134,30 +136,69 @@ In a third terminal, run the RL training loop. Choose one of the following scrip
   ```
 
 ### Stage 2: Inference and Benchmarking 📊
-Once you have a trained graph constructor, you can use it to build a knowledge graph from a corpus and benchmark its performance.
+Once trained, convert the checkpoint and use it to build and evaluate a knowledge graph.
 
-**1. Knowledge Graph Construction**
+**1. Convert FSDP Checkpoint to Hugging Face Format**
+
+VeRL saves checkpoints in FSDP format. Convert them for easy hosting. You can follow the [official VeRL tutorial](https://verl.readthedocs.io/en/latest/advance/checkpoint.html#convert-fsdp-and-megatron-checkpoints-to-huggingface-format-model) or run the command below.
+
+```bash
+# Replace CHECKPOINT_PATH with the trainer.default_local_dir from your training script
+# and STEP_NUM with the checkpoint step you want to convert (e.g., 50).
+CHECKPOINT_PATH="path/to/your/checkpoints"
+STEP_NUM="50"
+
+python3 -m verl.model_merger merge \
+    --backend fsdp \
+    --local_dir $CHECKPOINT_PATH/global_step_$STEP_NUM/actor \
+    --target_dir $CHECKPOINT_PATH/global_step_$STEP_NUM/actor/huggingface
+```
+
+**2. Host the Fine-Tuned Model with vLLM**
+
+Serve your converted Hugging Face model as an API endpoint (you can also use it with sglang).
+```bash
+# Adjust CHECKPOINT_PATH and STEP_NUM as needed
+CHECKPOINT_PATH="path/to/your/checkpoints"
+STEP_NUM="50"
+
+CUDA_VISIBLE_DEVICES=0,1 vllm serve $CHECKPOINT_PATH/global_step_$STEP_NUM/actor/huggingface \
+    --host 0.0.0.0 \
+    --port 8111 \
+    --gpu-memory-utilization 0.9 \
+    --tensor-parallel-size 2 \
+    --max-model-len 16384
+```
+
+
+**3. Knowledge Graph Construction**
 
 Use your fine-tuned model to extract a KG from a text corpus. Edit the script to point to your model and data.
 - **Arguments**: Pass the `model_name` (the path to your fine-tuned model checkpoint) and other parameters inside the script or via the command line.
-- **Run the script:**
+- **Run the script (Example):**
   ```bash
-  python benchmark/autograph/custom_kg_extraction.py
+  # Adjust the API url in the python script as needed
+  python benchmark/autograph/custom_kg_extraction.py 
+    --model_name $CHECKPOINT_PATH/global_step_$STEP_NUM/actor/huggingface
   ```
 - **Output**: The constructed knowledge graph will be saved to the specified output directory.
 - **For argument details, please refer to the script.**
 
 **2. RAG Benchmarking**
 
-Evaluate the performance of the generated KG using our benchmarking scripts. Ensure the model endpoints and KG paths in the scripts are correctly set.
+Evaluate the performance of the generated KG using our benchmarking scripts. Ensure the model endpoints and KG paths in the scripts are correctly set. You have to set the KG paths with `model_name`.
+
+(For embedding and reader models, you can run the scripts in `benchmark/vllm_serve` for serving them.)
 - **Method 1: Graph Retriever Benchmark:**
   ```bash
   python benchmark/autograph/benchmarking_graph.py
+    --model_name $CHECKPOINT_PATH/global_step_$STEP_NUM/actor/huggingface
   ```
 
 - **Method 2: Graph-Based Text Retriever Benchmark:**
   ```bash
   python benchmark/autograph/benchmarking_text.py
+    --model_name $CHECKPOINT_PATH/global_step_$STEP_NUM/actor/huggingface
   ```
 
 ## 🌟 Citation
@@ -173,3 +214,6 @@ If you use AutoGraph-R1 in your research, please cite our paper:
       url={https://arxiv.org/abs/YOUR_PAPER_ID}, 
 }
 ```
+
+## 📞 Contacts
+Hong Ting TSANG (Dennis) (httsangaj@connect.ust.hk)

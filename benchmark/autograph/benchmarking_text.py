@@ -21,7 +21,7 @@ argparser.add_argument("--use_upperbound", action="store_true", help="Use upperb
 # set store true if using dense retrieval only
 argparser.add_argument("--use_dense_only", action="store_true", help="Use dense retrieval only")
 args = argparser.parse_args()
-kg_names = ["musique"]
+kg_names = ["2wikimultihopqa","musique", 'hotpotqa', '2021wiki']
 # kg_names = ['2021wiki']
 # kg_names = ['hotpotqa']
 # kg_names = ['2wikimultihopqa']
