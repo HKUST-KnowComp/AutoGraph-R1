@@ -3,6 +3,7 @@
 [![arXiv](https://img.shields.io/badge/arXiv-SOON-74b9ff?style=for-the-badge&logo=arxiv&logoColor=white)](https://arxiv.org/abs/YOUR_PAPER_ID)
 [![Python](https://img.shields.io/badge/Python-3.10%2B-0984e3?style=for-the-badge&logo=python&logoColor=white)](https://www.python.org/downloads/release/python-3100/)
 [![License](https://img.shields.io/badge/License-MIT-yellow?style=for-the-badge&logo=opensourceinitiative&logoColor=white)](https://opensource.org/licenses/MIT)
+[![Hugging Face Spaces](https://img.shields.io/badge/Hugging%20Face-Spaces-ffc107.svg?style=for-the-badge&logo=huggingface)](https://huggingface.co/collections/gzone0111/autograph-r1-68e21b3b85c3f3a4a63a2e59)
 
 
 ### 🤔 **Is Your RAG Pipeline *Really* Optimized?**
@@ -87,7 +88,7 @@ The training scripts require the `musique_hotpotqa_graph_retriever` and `musique
 
 -  **Run the download script:**
     ```bash
-    DATASET="musique_hotpotqa_graph_retriever"
+    DATASET="gzone0111/musique_hotpotqa_graph_retriever"
     python scripts/download_dataset.py --repo_id $DATASET --output_path ./data
     ```
 This will download the train and validation splits and save them as `train.parquet` and `validation.parquet` in the `./data` directory. Ensure the paths in the training scripts point to these files.
