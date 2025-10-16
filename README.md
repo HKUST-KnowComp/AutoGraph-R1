@@ -34,6 +34,7 @@ The effectiveness of Graph Retrieval-Augmented Generation (GraphRAG) is often hi
   - [1. System Prerequisites (CUDA) ⚙️](#1-system-prerequisites-cuda-⚙️)
   - [2. Install Core Dependencies 📦](#2-install-core-dependencies-)
   - [3. Install Inference Dependencies 🔍](#3-install-inference-dependencies-)
+- [📚 Data Preparation](#-data-preparation)
 - [🧪 Running the Pipeline](#-running-the-pipeline)
   - [0. Initial Configuration 🛠️](#0-initial-configuration-️)
   - [Stage 1: Training the Graph Constructor 🏋️](#stage-1-training-the-graph-constructor-️)
@@ -80,6 +81,17 @@ For the inference stage, an additional package is required for the KG creation p
   cd AutoSchemaKG
   pip install -e .
   ```
+
+## 📚 Data Preparation
+The training scripts require the `musique_hotpotqa_graph_retriever` and `musique_hotpotqa_graph_text_retriever` dataset. We provide a script to download it from the Hugging Face Hub.
+
+-  **Run the download script:**
+    ```bash
+    DATASET="musique_hotpotqa_graph_retriever"
+    python scripts/download_dataset.py --repo_id $DATASET --output_path ./data
+    ```
+This will download the train and validation splits and save them as `train.parquet` and `validation.parquet` in the `./data` directory. Ensure the paths in the training scripts point to these files.
+
 ## 🧪 Running the Pipeline
 The AutoGraph-R1 pipeline consists of a training stage and an inference stage.
 
@@ -205,7 +217,7 @@ Evaluate the performance of the generated KG using our benchmarking scripts. Ens
 If you use AutoGraph-R1 in your research, please cite our paper:
 ```
 @misc{YOUR_CITATION_KEY,
-      title={Directly Optimizing Knowledge Graph Construction for RAG using Reinforcement Learning}, 
+      title={AutoGraph-R1: End-to-End Reinforcement Learning for Knowledge Graph Construction}, 
       author={Author One and Author Two and Author Three},
       year={2025},
       eprint={YOUR_PAPER_ID},
