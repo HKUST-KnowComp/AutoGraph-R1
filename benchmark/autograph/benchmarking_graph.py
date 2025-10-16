@@ -44,7 +44,7 @@ def main():
         llm_generator = LLMGenerator(client=client, model_name=reader_model_name)
         
         checkpoint_path = args.model_name
-        if checkpoint_path == "Qwen/Qwen2.5-3B-Instruct" or checkpoint_path == "Qwen/Qwen2.5-7B-Instruct" or checkpoint_path == 'meta-llama/Llama-3.2-3B-Instruct' or checkpoint_path == 'meta-llama/Llama-3.1-8B-Instruct':
+        if checkpoint_path == "Qwen/Qwen2.5-3B-Instruct" or checkpoint_path == "Qwen/Qwen2.5-7B-Instruct" or checkpoint_path == 'meta-llama/Llama-3.2-3B-Instruct' or checkpoint_path == 'meta-llama/Llama-3.2-1B-Instruct':
         # get the name after '/'
             output_directory = f'/data/autograph/checkpoints/{checkpoint_path.split("/")[-1]}/constructed_kg/{kg_name}_output'
         else:
@@ -77,7 +77,7 @@ def main():
                 base_dir = base_dir + "_dense"
             benchmark_config = BenchMarkConfig(
                 dataset_name=qa_name,
-                question_file=f"/home/knowcomp/projects/AutoSchemaKG/benchmark_data/{qa_name}.json",
+                question_file=f"/home/knowcomp/projects/autograph-r1/benchmark/{qa_name}.json",
                 result_dir=f"{base_dir}/benchmark/graph_retrieval",
                 include_concept=False,
                 include_events=False,
