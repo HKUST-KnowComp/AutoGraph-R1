@@ -142,9 +142,9 @@ python3 -m verl.trainer.main_ppo \
     actor_rollout_ref.rollout.text_linking=$TEXT_LINKING \
     actor_rollout_ref.rollout.freeze_answer_api=True \
     actor_rollout_ref.rollout.iterative=$ITERATIVE \
-    actor_rollout_ref.rollout.filter_repetition_rollout=True \
+    actor_rollout_ref.rollout.filter_repetition_rollout=False \
     actor_rollout_ref.rollout.reward_function=$reward_function \
-    custom_reward_function.reward_kwargs.triple_repetition_penalty=1.0
+    custom_reward_function.reward_kwargs.triple_repetition_penalty=0.0
 
     
     

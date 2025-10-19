@@ -41,7 +41,6 @@ F1_REWARD="False" # available: True, False
 MIX_DATA="True" # available: True, False
 DEDUCE_REWARD="True"
 ITERATIVE="True"
-TIGHT="False" # available: True, False
 
 TRAIN_DATA="/data/autograph/data/musique_train_doc_size_${DOC_SIZE}_distract_${WITH_DISTRACT}_with_mcq_False_difficulty_${DIFFFICULTY}_text_linking_${TEXT_LINKING}.parquet"
 VAL_DATA="/data/autograph/data/musique_validation_doc_size_${DOC_SIZE}_distract_${WITH_DISTRACT}_with_mcq_False_difficulty_${DIFFFICULTY}_text_linking_${TEXT_LINKING}.parquet"
@@ -66,7 +65,7 @@ fi
 
 TIMESTAMP=$(date +"%Y%m%d_%H%M%S")
 
-CHECKPOINT_DIR="/data/autograph/checkpoints/${TIMESTAMP}_Meta-Llama-3.2-3B-Instruct-autograph-distract_${DIFFFICULTY}-docsize${DOC_SIZE}-textlinking${TEXT_LINKING}-f1${F1_REWARD}"
+CHECKPOINT_DIR="/data/autograph/checkpoints/${TIMESTAMP}_qwen2.5-3B-autograph-${DIFFFICULTY}-docsize${DOC_SIZE}-textlinking${TEXT_LINKING}-loose"
 
 if [ "$TEXT_LINKING" = "True" ]; then
     reward_fn_file_path="verl/third_party/autograph_r1/recall_reward.py"
@@ -95,7 +94,7 @@ python3 -m verl.trainer.main_ppo \
     data.shuffle=True \
     data.truncation='error' \
     data.return_raw_chat=True \
-    actor_rollout_ref.model.path=meta-llama/Llama-3.2-3B-Instruct \
+    actor_rollout_ref.model.path=Qwen/Qwen2.5-3B-Instruct \
     actor_rollout_ref.actor.optim.lr=1e-6 \
     actor_rollout_ref.actor.optim.lr_warmup_steps_ratio=0.285 \
     actor_rollout_ref.model.use_remove_padding=True \
@@ -126,13 +125,13 @@ python3 -m verl.trainer.main_ppo \
     trainer.val_before_train=False \
     trainer.logger=['console','wandb'] \
     trainer.project_name='auto_graph_rl' \
-    trainer.experiment_name="Meta-Llama-3.2-3B-Instruct-auto-graph-rl-distract-${DIFFFICULTY}-docsize${DOC_SIZE}-graph-retriever-deduce-${DEDUCE_REWARD}-tight-${TIGHT}" \
+    trainer.experiment_name="azure-qwen2.5-3B-auto-graph-rl-distract-${DIFFFICULTY}-docsize${DOC_SIZE}-text-linking${TEXT_LINKING}-deduce-${DEDUCE_REWARD}-loose-repetition" \
     trainer.n_gpus_per_node=2 \
     trainer.nnodes=1 \
     trainer.total_training_steps=50 \
     trainer.save_freq=50 \
     trainer.test_freq=-1 \
-    trainer.ray_wait_register_center_timeout=360000 \
+    trainer.ray_wait_register_center_timeout=36000 \
     data.train_files="$TRAIN_DATA" \
     data.val_files="$VAL_DATA"  \
     trainer.default_local_dir="$CHECKPOINT_DIR" \
@@ -143,8 +142,9 @@ python3 -m verl.trainer.main_ppo \
     actor_rollout_ref.rollout.text_linking=$TEXT_LINKING \
     actor_rollout_ref.rollout.freeze_answer_api=True \
     actor_rollout_ref.rollout.iterative=$ITERATIVE \
-    actor_rollout_ref.rollout.tight=$TIGHT \
+    actor_rollout_ref.rollout.tight=False \
     actor_rollout_ref.rollout.filter_repetition_rollout=True \
     actor_rollout_ref.rollout.reward_function=$reward_function \
     custom_reward_function.reward_kwargs.triple_repetition_penalty=1.0
+    
     
