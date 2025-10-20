@@ -1,6 +1,6 @@
 # AutoGraph-R1
 [![GitHub stars](https://img.shields.io/github/stars/gzone0111/AutoGraph-R1?style=for-the-badge&logo=github&logoColor=white&color=a29bfe&label=stars)](https://github.com/HKUST-KnowComp/AutoGraph-R1)
-[![arXiv](https://img.shields.io/badge/arXiv-SOON-74b9ff?style=for-the-badge&logo=arxiv&logoColor=white)](https://arxiv.org/abs/2510.15339)
+[![arXiv](https://img.shields.io/badge/arXiv-2510.15339-b31b1b.svg?style=for-the-badge&logo=arxiv&logoColor=white)](https://arxiv.org/abs/2510.15339)
 [![Python](https://img.shields.io/badge/Python-3.10%2B-0984e3?style=for-the-badge&logo=python&logoColor=white)](https://www.python.org/downloads/release/python-3100/)
 [![License](https://img.shields.io/badge/License-MIT-yellow?style=for-the-badge&logo=opensourceinitiative&logoColor=white)](https://opensource.org/licenses/MIT)
 [![Hugging Face Collections](https://img.shields.io/badge/Hugging%20Face-Collections-ffc107.svg?style=for-the-badge&logo=huggingface)](https://huggingface.co/collections/gzone0111/autograph-r1-68e21b3b85c3f3a4a63a2e59)
