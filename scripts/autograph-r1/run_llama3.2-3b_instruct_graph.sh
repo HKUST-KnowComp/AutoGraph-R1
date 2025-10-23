@@ -93,7 +93,7 @@ python3 -m verl.trainer.main_ppo \
     data.max_response_length=8192 \
     data.filter_overlong_prompts=True \
     data.shuffle=True \
-    data.truncation='error' \
+    data.truncation='middle' \
     data.return_raw_chat=True \
     actor_rollout_ref.model.path=meta-llama/Llama-3.2-3B-Instruct \
     actor_rollout_ref.actor.optim.lr=1e-6 \
@@ -145,6 +145,7 @@ python3 -m verl.trainer.main_ppo \
     actor_rollout_ref.rollout.iterative=$ITERATIVE \
     actor_rollout_ref.rollout.tight=$TIGHT \
     actor_rollout_ref.rollout.filter_repetition_rollout=True \
+    actor_rollout_ref.rollout.filter_repetition_threshold=0.3 \
     actor_rollout_ref.rollout.reward_function=$reward_function \
     custom_reward_function.reward_kwargs.triple_repetition_penalty=1.0
     

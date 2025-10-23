@@ -352,6 +352,7 @@ class SGLangRollout(BaseRollout):
         self.use_api = self.config.get("use_api", False)
         self.tight = self.config.get("tight", False)
         self.filter_repetition_rollout = self.config.get("filter_repetition_rollout", False)
+        self.filter_repetition_threshold = self.config.get("filter_repetition_threshold", 0.9)
         self.use_local_actor_for_rag = False
         if self.use_api:
             # Model checking
@@ -1950,7 +1951,7 @@ class SGLangRollout(BaseRollout):
                 repetition_ratio = 0.0
             
             # Add repetition ratio to output_text (which should be a json form string)
-            if repetition_ratio > 0.3:
+            if repetition_ratio > self.filter_repetition_threshold:
                 output_text = "Error: Excessive triple repetition detected"
                 repetition_ratio = 1.0 # since the answer will be 0 any way
             temp_output_text_json = json_repair.loads(output_text)

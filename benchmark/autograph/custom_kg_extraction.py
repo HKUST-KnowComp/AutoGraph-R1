@@ -1,6 +1,6 @@
 from atlas_rag.kg_construction.triple_extraction import KnowledgeGraphExtractor
 from atlas_rag.kg_construction.triple_config import ProcessingConfig
-from atlas_rag.llm_generator import LLMGenerator
+from atlas_rag.llm_generator import LLMGenerator, GenerationConfig
 from openai import OpenAI
 import os
 from openai import OpenAI
@@ -9,13 +9,16 @@ import argparse
 parser = argparse.ArgumentParser(description="Custom KG Extraction")
 parser.add_argument("--model_name", type=str, default="Qwen/Qwen2.5-3B-Instruct", help="Keyword for extraction")
 args = parser.parse_args()
-keywords = ["hotpotqa", "2021wiki"]
+# keywords = ['musique', '2wikimultihopqa', 'hotpotqa', '2021wiki']
+# keywords = ["hotpotqa", "2021wiki"]
+keywords = ['musique', '2wikimultihopqa']
 # keywords = ["2021wiki"]
 for keyword in keywords:
       model_name = args.model_name
 
       client = OpenAI(base_url="http://0.0.0.0:8111/v1", api_key="EMPTY")
-      triple_generator = LLMGenerator(client=client, model_name=model_name, max_workers=5)
+      gen_config = GenerationConfig(early_stopping=True, temperature=0.0)
+      triple_generator = LLMGenerator(client=client, model_name=model_name, max_workers=5, default_config=gen_config)
 
       filename_pattern = keyword
       checkpoint_path = args.model_name

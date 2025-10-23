@@ -27,6 +27,7 @@ actor_rollout_ref:
     tight: False
     reward_function: deducible_reward # available: f1_reward, deducible_reward, recall_reward
     filter_repetition_rollout: False # Whether filter out the excessive repetition in rollout stage
+    filter_repetition_threshold: 0.9 # Threshold for filtering excessive repetition in rollout stage
 custom_reward_function:
   reward_kwargs:
     triple_repetition_penalty: 0.0

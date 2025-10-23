@@ -94,7 +94,7 @@ python3 -m verl.trainer.main_ppo \
     data.max_response_length=8192 \
     data.filter_overlong_prompts=True \
     data.shuffle=True \
-    data.truncation='error' \
+    data.truncation='middle' \
     data.return_raw_chat=True \
     actor_rollout_ref.model.path=Qwen/Qwen2.5-7B-Instruct \
     actor_rollout_ref.actor.optim.lr=1e-6 \
@@ -127,7 +127,7 @@ python3 -m verl.trainer.main_ppo \
     trainer.val_before_train=False \
     trainer.logger=['console','wandb'] \
     trainer.project_name='auto_graph_rl' \
-    trainer.experiment_name="qwen2.5-7b-auto-graph-rl-distract-${DIFFFICULTY}-docsize${DOC_SIZE}-graph-retriever-deduce-${DEDUCE_REWARD}-tight-${TIGHT}" \
+    trainer.experiment_name="qwen2.5-7b-auto-graph-rl-distract-${DIFFFICULTY}-docsize${DOC_SIZE}-graph-retriever-deduce-${DEDUCE_REWARD}-tight-${TIGHT}-with-repetition" \
     trainer.n_gpus_per_node=2 \
     trainer.nnodes=1 \
     trainer.total_training_steps=50 \
@@ -146,6 +146,7 @@ python3 -m verl.trainer.main_ppo \
     actor_rollout_ref.rollout.iterative=$ITERATIVE \
     actor_rollout_ref.rollout.tight=$TIGHT \
     actor_rollout_ref.rollout.filter_repetition_rollout=True \
+    actor_rollout_ref.rollout.filter_repetition_threshold=0.9 \
     actor_rollout_ref.rollout.reward_function=$reward_function \
     custom_reward_function.reward_kwargs.triple_repetition_penalty=1.0
     

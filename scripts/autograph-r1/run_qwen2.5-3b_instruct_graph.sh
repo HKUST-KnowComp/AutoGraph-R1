@@ -92,7 +92,7 @@ python3 -m verl.trainer.main_ppo \
     data.max_response_length=8192 \
     data.filter_overlong_prompts=True \
     data.shuffle=True \
-    data.truncation='error' \
+    data.truncation='middle' \
     data.return_raw_chat=True \
     actor_rollout_ref.model.path=Qwen/Qwen2.5-3B-Instruct \
     actor_rollout_ref.actor.optim.lr=1e-6 \
@@ -145,5 +145,4 @@ python3 -m verl.trainer.main_ppo \
     actor_rollout_ref.rollout.tight=False \
     actor_rollout_ref.rollout.reward_function=$reward_function \
     custom_reward_function.reward_kwargs.triple_repetition_penalty=0.0
-    
     

@@ -139,4 +139,3 @@ python3 -m verl.trainer.main_ppo \
     actor_rollout_ref.rollout.freeze_answer_api=False \
     actor_rollout_ref.rollout.iterative=$ITERATIVE \
     actor_rollout_ref.rollout.tight=True \
-    

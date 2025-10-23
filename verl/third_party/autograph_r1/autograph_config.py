@@ -12,3 +12,4 @@ class AutoGraphActorConfig(RolloutConfig):
     tight:bool = True # Whether use tight retrieval or not (tight retrieval means the number of hops / the number of retrieved documents is equal to the number of hops in the question / number of supporting contexts)
     reward_function:str = 'deducible_reward' # available: f1_reward, deducible_reward, recall_reward
     filter_repetition_rollout:bool = True # Whether filter out the excessive repetition in rollout stage
+    filter_repetition_threshold:float = 0.9 # Threshold for filtering excessive repetition in rollout stage
