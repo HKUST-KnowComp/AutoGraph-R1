@@ -217,14 +217,14 @@ Evaluate the performance of the generated KG using our benchmarking scripts. Ens
 ## 🌟 Citation
 If you use AutoGraph-R1 in your research, please cite our paper:
 ```
-@misc{YOUR_CITATION_KEY,
+@misc{tsang2025autographr1endtoendreinforcementlearning,
       title={AutoGraph-R1: End-to-End Reinforcement Learning for Knowledge Graph Construction}, 
-      author={Author One and Author Two and Author Three},
+      author={Hong Ting Tsang and Jiaxin Bai and Haoyu Huang and Qiao Xiao and Tianshi Zheng and Baixuan Xu and Shujie Liu and Yangqiu Song},
       year={2025},
-      eprint={YOUR_PAPER_ID},
+      eprint={2510.15339},
       archivePrefix={arXiv},
       primaryClass={cs.CL},
-      url={https://arxiv.org/abs/YOUR_PAPER_ID}, 
+      url={https://arxiv.org/abs/2510.15339}, 
 }
 ```
 

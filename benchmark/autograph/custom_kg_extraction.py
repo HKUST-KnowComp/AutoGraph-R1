@@ -16,7 +16,7 @@ keywords = ['musique', '2wikimultihopqa', 'hotpotqa', '2021wiki']
 for keyword in keywords:
       model_name = args.model_name
 
-      client = OpenAI(base_url="http://0.0.0.0:8111/v1", api_key="EMPTY")
+      client = OpenAI(base_url="http://0.0.0.0:8112/v1", api_key="EMPTY")
       gen_config = GenerationConfig(early_stopping=True, temperature=0.7)
       triple_generator = LLMGenerator(client=client, model_name=model_name, max_workers=5, default_config=gen_config)
 
